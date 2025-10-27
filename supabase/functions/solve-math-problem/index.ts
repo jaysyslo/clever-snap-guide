@@ -18,8 +18,20 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
+    // Fetch the image and convert to base64
+    console.log('Fetching image from:', imageUrl);
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
+    }
+    
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
+    const mimeType = imageResponse.headers.get('content-type') || 'image/png';
+    const dataUrl = `data:${mimeType};base64,${base64Image}`;
+    console.log('Image converted to base64, size:', base64Image.length);
+
     let systemPrompt = '';
-    let responseFormat = {};
 
     if (mode === 'similar') {
       systemPrompt = "You are a math tutor. Analyze the math problem in the image and create a SIMILAR (not identical) problem with a complete step-by-step solution. Format your response as a clear, educational walkthrough with numbered steps.";
@@ -27,6 +39,7 @@ serve(async (req) => {
       systemPrompt = "You are a math tutor. Analyze the EXACT problem in the image and break it down into 3-4 clear steps. For EACH step, you must provide: 1) A brief instruction/question for that step, 2) A helpful hint, and 3) The correct answer for that specific step. Format as: Step 1: [instruction] | Hint: [hint] | Answer: [answer]";
     }
 
+    console.log('Calling AI with mode:', mode);
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -41,7 +54,7 @@ serve(async (req) => {
             role: 'user', 
             content: [
               { type: 'text', text: 'Please analyze this math problem and provide the solution in the requested format.' },
-              { type: 'image_url', image_url: { url: imageUrl } }
+              { type: 'image_url', image_url: { url: dataUrl } }
             ]
           }
         ],
