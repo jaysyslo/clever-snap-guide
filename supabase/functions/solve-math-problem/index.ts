@@ -18,18 +18,29 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    // Fetch the image and convert to base64
-    console.log('Fetching image from:', imageUrl);
-    const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
-    }
-    
-    const imageBuffer = await imageResponse.arrayBuffer();
-    const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
-    const mimeType = imageResponse.headers.get('content-type') || 'image/png';
-    const dataUrl = `data:${mimeType};base64,${base64Image}`;
-    console.log('Image converted to base64, size:', base64Image.length);
+
+    // ... (omitted code)
+
+    // Fetch the image and convert to base64
+    console.log('Fetching image from:', imageUrl);
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
+    }
+    
+    const imageBuffer = await imageResponse.arrayBuffer();
+    // Correctly convert ArrayBuffer to a Base64 string
+    const uint8Array = new Uint8Array(imageBuffer);
+    // Convert Uint8Array to a binary string before btoa()
+    const binaryString = uint8Array.reduce(
+        (acc, byte) => acc + String.fromCharCode(byte), 
+        ''
+    );
+    const base64Image = btoa(binaryString);
+
+    const mimeType = imageResponse.headers.get('content-type') || 'image/png';
+    const dataUrl = `data:${mimeType};base64,${base64Image}`;
+    console.log('Image converted to base64, size:', base64Image.length);
 
     let systemPrompt = '';
 
@@ -77,11 +88,13 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
-    console.error('Error:', error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
+    // ... (omitted code)
+
+  } catch (error) {
+    console.error('Error:', error.name, error.message); // Added .name
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 });
