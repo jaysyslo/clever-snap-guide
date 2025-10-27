@@ -11,6 +11,7 @@ import Solve from "./pages/Solve";
 import Solution from "./pages/Solution";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
+import StudyGuide from "./pages/StudyGuide";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <History />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/study-guide"
+                element={
+                  <ProtectedRoute>
+                    <StudyGuide />
                   </ProtectedRoute>
                 }
               />

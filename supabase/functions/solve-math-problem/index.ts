@@ -18,9 +18,14 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const systemPrompt = mode === 'similar' 
-      ? "You are a math tutor. Analyze the math problem in the image and create a SIMILAR problem with a complete step-by-step solution. Make it educational and clear."
-      : "You are a math tutor. Analyze the exact problem in the image and break it down into 3-4 steps. For each step, provide a hint and the correct answer. Be encouraging and supportive.";
+    let systemPrompt = '';
+    let responseFormat = {};
+
+    if (mode === 'similar') {
+      systemPrompt = "You are a math tutor. Analyze the math problem in the image and create a SIMILAR (not identical) problem with a complete step-by-step solution. Format your response as a clear, educational walkthrough with numbered steps.";
+    } else if (mode === 'step_by_step') {
+      systemPrompt = "You are a math tutor. Analyze the EXACT problem in the image and break it down into 3-4 clear steps. For EACH step, you must provide: 1) A brief instruction/question for that step, 2) A helpful hint, and 3) The correct answer for that specific step. Format as: Step 1: [instruction] | Hint: [hint] | Answer: [answer]";
+    }
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -35,7 +40,7 @@ serve(async (req) => {
           { 
             role: 'user', 
             content: [
-              { type: 'text', text: 'Please analyze this math problem.' },
+              { type: 'text', text: 'Please analyze this math problem and provide the solution in the requested format.' },
               { type: 'image_url', image_url: { url: imageUrl } }
             ]
           }
@@ -45,11 +50,14 @@ serve(async (req) => {
 
     if (!response.ok) {
       const error = await response.text();
+      console.error('AI API error:', error);
       throw new Error(`AI API error: ${error}`);
     }
 
     const data = await response.json();
     const solution = data.choices[0].message.content;
+
+    console.log('AI Response:', solution);
 
     return new Response(
       JSON.stringify({ solution, mode }),

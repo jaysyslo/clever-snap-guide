@@ -62,7 +62,20 @@ const History = () => {
   };
 
   const handleGenerateStudyGuide = async () => {
-    toast({ title: "Generating study guide...", description: "This feature is coming soon!" });
+    try {
+      toast({ title: "Generating study guide...", description: "This may take a moment." });
+      
+      const { data, error } = await supabase.functions.invoke("generate-study-guide", {
+        body: { userId: user?.id },
+      });
+
+      if (error) throw error;
+
+      // Navigate to a study guide view or show in modal
+      navigate('/study-guide', { state: { studyGuide: data.studyGuide } });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
   };
 
   return (
