@@ -27,7 +27,7 @@ serve(async (req) => {
     // Fetch user's question history
     const { data: questions, error } = await supabase
       .from('question_history')
-      .select('*')
+      .select('problem_text, solution_mode, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
@@ -41,17 +41,13 @@ serve(async (req) => {
     }
 
     // Prepare context from question history
-    const historyContext = questions.map((q, idx) => 
-      `Problem ${idx + 1}: Mode - ${q.solution_mode}, Date - ${q.created_at}`
-    ).join('\n');
+    const historyContext = questions.map((q, idx) => `Problem ${idx + 1} (Mode: ${q.solution_mode}):\n-- Problem Text: ${q.problem_text
 
-    const systemPrompt = `You are an expert math tutor creating a personalized study guide. Based on the user's question history, identify common problem types, areas that need improvement, and provide:
-1. A summary of topics covered
-2. Key concepts to review
-3. Practice problems for weak areas
-4. Study recommendations
-
-Make it encouraging and actionable.`;
+    const systemPrompt = `You are an expert math tutor creating a highly personalized study guide. Analyze the provided problem texts and solution modes from the history. Identify the mathematical concepts involved, common mistakes, and areas needing review. Your response MUST be formatted with clear headings for:
+    1. Summary of Topics Covered
+    2. Key Concepts to Review
+    3. Practice Problems for Weak Areas (include an example problem for each area)
+    4. Study Recommendations`; 
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
