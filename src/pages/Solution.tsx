@@ -19,7 +19,6 @@ const Solution = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { imageUrl, mode } = location.state || {};
   const [loading, setLoading] = useState(true);
   const [solution, setSolution] = useState<string>("");
   const [steps, setSteps] = useState<Step[]>([]);
@@ -45,7 +44,7 @@ const generateSolution = async () => {
    
   try {
     const { data, error } = await supabase.functions.invoke("solve-math-problem", {
-      body: { imageUrl, mode },
+      body: { imagePath, bucketName: 'problem_images', mode },
     });
 
     if (error) throw error;
