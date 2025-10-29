@@ -91,11 +91,11 @@ serve(async (req) => {
 
     // ... (omitted code)
 
-  } catch (error) {
-    console.error('Error:', error.name, error.message); // Added .name
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
+  } catch (error) {
+    console.error('Error:', error instanceof Error ? error.name : 'Unknown', error instanceof Error ? error.message : String(error));
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 });

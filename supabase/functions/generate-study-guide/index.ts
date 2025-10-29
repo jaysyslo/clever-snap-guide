@@ -41,7 +41,7 @@ serve(async (req) => {
     }
 
     // Prepare context from question history
-    const historyContext = questions.map((q, idx) => `Problem ${idx + 1} (Mode: ${q.solution_mode}):\n-- Problem Text: ${q.problem_text
+    const historyContext = questions.map((q, idx) => `Problem ${idx + 1} (Mode: ${q.solution_mode}):\n-- Problem Text: ${q.problem_text}`).join('\n\n');
 
     const systemPrompt = `You are an expert math tutor creating a highly personalized study guide. Analyze the provided problem texts and solution modes from the history. Identify the mathematical concepts involved, common mistakes, and areas needing review. Your response MUST be formatted with clear headings for:
     1. Summary of Topics Covered
