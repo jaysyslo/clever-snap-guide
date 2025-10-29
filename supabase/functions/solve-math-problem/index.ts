@@ -23,6 +23,7 @@ serve(async (req) => {
 
     // Fetch the image and convert to base64
     console.log('Fetching image from:', imageUrl);
+    console.log('Mode:', mode);
     const imageResponse = await fetch(imageUrl);
     if (!imageResponse.ok) {
       throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
