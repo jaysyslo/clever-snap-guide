@@ -1,45 +1,69 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// ADDED: Import Supabase client
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
-  try {
-    const { imageUrl, mode } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  try {
+    // CHANGED: Expecting imagePath and bucketName instead of imageUrl
+    const { imagePath, bucketName, mode } = await req.json();
+    
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    // ADDED: Supabase Environment Variables
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY not configured');
+    }
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+        throw new Error('Supabase configuration missing');
     }
 
+    // ADDED: Initialize Supabase Admin client with Service Role Key
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // ... (omitted code)
-
-    // Fetch the image and convert to base64
-    console.log('Fetching image from:', imageUrl);
+    // Fetch the image using the Supabase Admin client
+    console.log('Fetching image path:', imagePath);
     console.log('Mode:', mode);
-    const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
-    }
-    
-    const imageBuffer = await imageResponse.arrayBuffer();
-    // Correctly convert ArrayBuffer to a Base64 string
-    const uint8Array = new Uint8Array(imageBuffer);
-    // Convert Uint8Array to a binary string before btoa()
-    const binaryString = uint8Array.reduce(
-        (acc, byte) => acc + String.fromCharCode(byte), 
-        ''
-    );
-    const base64Image = btoa(binaryString);
+    
+    // REPLACED: Fetch the private file using the Service Role Key
+    const { data: fileData, error: storageError } = await supabaseAdmin
+        .storage
+        .from(bucketName)
+        .download(imagePath);
+    
+    if (storageError) {
+        throw new Error(`Supabase Storage Error: ${storageError.message}`);
+    }
+    
+    if (!fileData) {
+        throw new Error('Supabase Storage returned no file data.');
+    }
 
-    const mimeType = imageResponse.headers.get('content-type') || 'image/png';
+    // Convert the Blob to ArrayBuffer
+    const imageBuffer = await fileData.arrayBuffer();
+
+    // Correctly convert ArrayBuffer to a Base64 string
+    const uint8Array = new Uint8Array(imageBuffer);
+    // Convert Uint8Array to a binary string before btoa()
+    const binaryString = uint8Array.reduce(
+        (acc, byte) => acc + String.fromCharCode(byte), 
+        ''
+    );
+    const base64Image = btoa(binaryString);
+
+    // TEMPORARY: Hardcode mimeType since Supabase download doesn't easily return it
+    // NOTE: If this causes issues, you must pass the file's mime type from the client.
+    const mimeType = 'image/png'; 
     const dataUrl = `data:${mimeType};base64,${base64Image}`;
     console.log('Image converted to base64, size:', base64Image.length);
 
