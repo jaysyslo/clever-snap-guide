@@ -36,39 +36,55 @@ const Solution = () => {
     generateSolution();
   }, [imageUrl, mode]);
 
-  const generateSolution = async () => {
-    setLoading(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke("solve-math-problem", {
-        body: { imageUrl, mode },
-      });
+  // Solution.tsx (Client Side)
 
-      if (error) throw error;
+// Solution.tsx
 
-      if (mode === 'step_by_step') {
-        // Parse the step-by-step response
-        const parsedSteps = parseSteps(data.solution);
-        setSteps(parsedSteps);
-      } else {
-        setSolution(data.solution);
-      }
+const generateSolution = async () => {
+  setLoading(true);
+   
+  try {
+    const { data, error } = await supabase.functions.invoke("solve-math-problem", {
+      body: { imageUrl, mode },
+    });
 
-      // Update the question history with the solution
-      await supabase
-        .from("question_history")
-        .update({ solution_data: { solution: data.solution } })
-        .eq("user_id", user?.id)
-        .eq("image_url", imageUrl)
-        .eq("solution_mode", mode);
+    if (error) throw error;
 
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-      console.error('Solution error:', error);
-    } finally {
-      setLoading(false);
+    // --------------------------------------------------------------------
+    // FINAL FIX: Safely unwrap the nested response body from the function invocation.
+    // The response body { solution, mode } is usually inside `data.data` or sometimes just `data`.
+    const responseBody = data && typeof data === 'object' && 'solution' in data 
+        ? data // Case 1: If data directly contains the solution key
+        : data?.data; // Case 2: If the solution is nested under a 'data' key
+
+    if (!responseBody || typeof responseBody.solution === 'undefined') {
+        throw new Error("AI function returned an invalid or empty response structure.");
     }
-  };
+    // --------------------------------------------------------------------
+
+    // Now, use the safely extracted responseBody for all logic:
+    if (mode === 'step_by_step') {
+      const parsedSteps = parseSteps(responseBody.solution);
+      setSteps(parsedSteps);
+    } else {
+      setSolution(responseBody.solution);
+    }
+
+    // Update the question history with the solution
+    await supabase
+      .from("question_history")
+      .update({ solution_data: { solution: responseBody.solution } }) // Use responseBody
+      .eq("user_id", user?.id)
+      .eq("image_url", imageUrl)
+      .eq("solution_mode", mode);
+
+  } catch (error: any) {
+    toast({ title: "Error", description: error.message, variant: "destructive" });
+    console.error('Solution error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const parseSteps = (solutionText: string): Step[] => {
     // Parse the AI response into structured steps
