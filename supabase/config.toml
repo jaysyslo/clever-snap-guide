@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.generate-study-guide]
 verify_jwt = false
+
+[functions.validate-answer]
+verify_jwt = false

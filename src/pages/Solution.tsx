@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, AlertCircle, Lightbulb, CheckCircle, ImageIcon } from "lucide-react";
+import { ArrowLeft, AlertCircle, Lightbulb, CheckCircle, ImageIcon, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,6 +33,7 @@ const Solution = () => {
   const [attemptedWrong, setAttemptedWrong] = useState(false);
   const [signedImageUrl, setSignedImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [validating, setValidating] = useState(false);
 
   useEffect(() => {
     if (!imageUrl || !mode) {
@@ -155,38 +156,51 @@ const Solution = () => {
     return parsedSteps;
   };
 
-  const handleSubmitAnswer = () => {
-    if (!steps[currentStep]) return;
+  const handleSubmitAnswer = async () => {
+    if (!steps[currentStep] || !userAnswer.trim()) return;
 
-    const normalizeAnswer = (ans: string) => 
-      ans.trim().toLowerCase().replace(/\s+/g, '').replace(/[.,;:!?]/g, '');
-
-    const userNormalized = normalizeAnswer(userAnswer);
-    const correctNormalized = normalizeAnswer(steps[currentStep].answer);
+    setValidating(true);
     
-    // Check for exact match or if the key answer is contained
-    const isCorrect = userNormalized === correctNormalized || 
-      correctNormalized.includes(userNormalized) && userNormalized.length > 0 ||
-      userNormalized.includes(correctNormalized) && correctNormalized.length > 0;
-
-    if (isCorrect) {
-      toast({ 
-        title: "✓ Correct!", 
-        description: currentStep < steps.length - 1 ? "Moving to next step" : "Problem completed!"
+    try {
+      const { data, error } = await supabase.functions.invoke("validate-answer", {
+        body: { 
+          userAnswer: userAnswer.trim(),
+          expectedAnswer: steps[currentStep].answer,
+          stepInstruction: steps[currentStep].instruction,
+          problemContext: "Math problem from uploaded image"
+        },
       });
-      if (currentStep < steps.length - 1) {
-        setCurrentStep(currentStep + 1);
-        setUserAnswer("");
-        setShowHint(false);
-        setAttemptedWrong(false);
+
+      if (error) throw error;
+
+      if (data.correct) {
+        toast({ 
+          title: "✓ Correct!", 
+          description: data.feedback || (currentStep < steps.length - 1 ? "Moving to next step" : "Problem completed!")
+        });
+        if (currentStep < steps.length - 1) {
+          setCurrentStep(currentStep + 1);
+          setUserAnswer("");
+          setShowHint(false);
+          setAttemptedWrong(false);
+        }
+      } else {
+        setAttemptedWrong(true);
+        toast({ 
+          title: "Not quite right", 
+          description: data.feedback || "Try again or view a hint",
+          variant: "destructive"
+        });
       }
-    } else {
-      setAttemptedWrong(true);
+    } catch (error: any) {
+      console.error('Validation error:', error);
       toast({ 
-        title: "Not quite right", 
-        description: "Try again or view a hint",
+        title: "Error validating answer", 
+        description: "Please try again",
         variant: "destructive"
       });
+    } finally {
+      setValidating(false);
     }
   };
 
@@ -352,11 +366,19 @@ const Solution = () => {
                     placeholder="Enter your answer"
                     value={userAnswer}
                     onChange={(e) => setUserAnswer(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSubmitAnswer()}
+                    onKeyDown={(e) => e.key === "Enter" && !validating && handleSubmitAnswer()}
+                    disabled={validating}
                   />
                   <div className="flex gap-2">
-                    <Button onClick={handleSubmitAnswer} className="flex-1">
-                      Submit Answer
+                    <Button onClick={handleSubmitAnswer} className="flex-1" disabled={validating}>
+                      {validating ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Checking...
+                        </>
+                      ) : (
+                        "Submit Answer"
+                      )}
                     </Button>
                     {!showHint && (
                       <Button variant="outline" onClick={() => setShowHint(true)}>
