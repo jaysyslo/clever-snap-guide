@@ -12,34 +12,43 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    // CHANGED: Expecting imagePath and bucketName instead of imageUrl
-    const { imagePath, bucketName, mode } = await req.json();
-    
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    // ADDED: Supabase Environment Variables
+  try {
+    const { imageUrl, mode } = await req.json();
+    
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
-    }
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY not configured');
+    }
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-        throw new Error('Supabase configuration missing');
+      throw new Error('Supabase configuration missing');
     }
 
-    // ADDED: Initialize Supabase Admin client with Service Role Key
+    // Parse the imageUrl to extract bucket name and file path
+    // URL format: https://<project>.supabase.co/storage/v1/object/public/<bucket>/<path>
+    const urlPattern = /\/storage\/v1\/object\/(?:public|sign)\/([^\/]+)\/(.+)/;
+    const match = imageUrl.match(urlPattern);
+    
+    if (!match) {
+      throw new Error('Invalid image URL format');
+    }
+    
+    const bucketName = match[1];
+    const filePath = match[2];
+    
+    console.log('Bucket:', bucketName, 'Path:', filePath);
+    console.log('Mode:', mode);
+
+    // Initialize Supabase Admin client with Service Role Key
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Fetch the image using the Supabase Admin client
-    console.log('Fetching image path:', imagePath);
-    console.log('Mode:', mode);
-    
-    // REPLACED: Fetch the private file using the Service Role Key
+    // Fetch the private file using the Service Role Key
     const { data: fileData, error: storageError } = await supabaseAdmin
         .storage
         .from(bucketName)
-        .download(imagePath);
+        .download(filePath);
     
     if (storageError) {
         throw new Error(`Supabase Storage Error: ${storageError.message}`);
