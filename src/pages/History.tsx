@@ -13,7 +13,7 @@ interface Question {
   image_url: string;
   solution_mode: string;
   created_at: string;
-  solution_data: { solution: string; completedSteps?: number } | null | unknown;
+  solution_data: { solution: string; completedSteps?: number; totalSteps?: number } | null | unknown;
 }
 
 const getSignedUrl = async (imageUrl: string): Promise<string | null> => {
@@ -133,9 +133,11 @@ const History = () => {
             </Card>
           ) : (
             questions.map((question) => {
-              const solutionData = question.solution_data as { solution?: string; completedSteps?: number } | null;
+              const solutionData = question.solution_data as { solution?: string; completedSteps?: number; totalSteps?: number } | null;
               const cachedSolution = solutionData?.solution;
               const completedSteps = solutionData?.completedSteps || 0;
+              const totalSteps = solutionData?.totalSteps || 0;
+              const isComplete = totalSteps > 0 && completedSteps >= totalSteps;
               
               return (
                 <Card 
@@ -147,6 +149,7 @@ const History = () => {
                       mode: question.solution_mode,
                       cachedSolution,
                       completedSteps,
+                      startStep: completedSteps,
                       viewSummary: question.solution_mode === 'step_by_step' && cachedSolution
                     } 
                   })}
@@ -172,9 +175,29 @@ const History = () => {
                         Mode: <span className="font-semibold capitalize">{question.solution_mode.replace("_", " ")}</span>
                       </p>
                       {question.solution_mode === 'step_by_step' && cachedSolution && (
-                        <p className="text-xs text-muted-foreground">
-                          Progress: {completedSteps > 0 ? `${completedSteps} steps completed` : 'Not started'}
-                        </p>
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            {isComplete ? (
+                              <span className="text-primary font-medium">Completed!</span>
+                            ) : totalSteps > 0 ? (
+                              `Progress: ${completedSteps}/${totalSteps} steps`
+                            ) : (
+                              'Not started'
+                            )}
+                          </p>
+                          {totalSteps > 0 && (
+                            <div className="flex gap-0.5">
+                              {Array.from({ length: totalSteps }).map((_, idx) => (
+                                <div
+                                  key={idx}
+                                  className={`h-1 flex-1 rounded-full ${
+                                    idx < completedSteps ? 'bg-primary' : 'bg-muted'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                     <Button

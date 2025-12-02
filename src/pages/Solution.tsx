@@ -26,6 +26,7 @@ const Solution = () => {
   const { imageUrl, mode, cachedSolution, startStep, completedSteps: initialCompletedSteps, viewSummary } = location.state || {};
   const [loading, setLoading] = useState(true);
   const [solution, setSolution] = useState<string>("");
+  const [rawSolution, setRawSolution] = useState<string>(""); // Store raw solution text for saving
   const [steps, setSteps] = useState<Step[]>([]);
   const [currentStep, setCurrentStep] = useState(startStep || 0);
   const [completedSteps, setCompletedSteps] = useState<number>(initialCompletedSteps || 0);
@@ -47,6 +48,7 @@ const Solution = () => {
     
     // Use cached solution if available
     if (cachedSolution) {
+      setRawSolution(cachedSolution);
       if (mode === 'step_by_step') {
         const parsedSteps = parseSteps(cachedSolution);
         setSteps(parsedSteps);
@@ -113,19 +115,27 @@ const Solution = () => {
           throw new Error("AI function returned an invalid or empty response structure.");
       }
 
+      setRawSolution(responseBody.solution);
+      
       if (mode === 'step_by_step') {
         const parsedSteps = parseSteps(responseBody.solution);
         setSteps(parsedSteps);
+        // Save with total steps count for history display
+        await supabase
+          .from("question_history")
+          .update({ solution_data: { solution: responseBody.solution, totalSteps: parsedSteps.length, completedSteps: 0 } })
+          .eq("user_id", user?.id)
+          .eq("image_url", imageUrl)
+          .eq("solution_mode", mode);
       } else {
         setSolution(responseBody.solution);
+        await supabase
+          .from("question_history")
+          .update({ solution_data: { solution: responseBody.solution } })
+          .eq("user_id", user?.id)
+          .eq("image_url", imageUrl)
+          .eq("solution_mode", mode);
       }
-
-      await supabase
-        .from("question_history")
-        .update({ solution_data: { solution: responseBody.solution } })
-        .eq("user_id", user?.id)
-        .eq("image_url", imageUrl)
-        .eq("solution_mode", mode);
 
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -243,7 +253,8 @@ const Solution = () => {
         .from("question_history")
         .update({ 
           solution_data: { 
-            solution: cachedSolution || solution, 
+            solution: rawSolution, 
+            totalSteps: steps.length,
             completedSteps: newCompletedSteps 
           } 
         })
@@ -462,6 +473,54 @@ const Solution = () => {
                   </div>
                 </div>
 
+                {/* Previously completed steps */}
+                {currentStep > 0 && (
+                  <div className="space-y-3 border-b pb-4 mb-4">
+                    <h4 className="text-sm font-semibold text-muted-foreground">Completed Steps</h4>
+                    {steps.slice(0, currentStep).map((step, idx) => (
+                      <details key={idx} className="group bg-accent/10 rounded-lg">
+                        <summary className="cursor-pointer p-3 flex items-center gap-3 hover:bg-accent/20 rounded-lg transition-colors">
+                          <div className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-semibold">
+                            {idx + 1}
+                          </div>
+                          <span className="text-sm font-medium flex-1 truncate">Step {idx + 1} - Completed</span>
+                          <CheckCircle className="w-4 h-4 text-primary" />
+                        </summary>
+                        <div className="px-3 pb-3 space-y-2">
+                          <div className="bg-background/50 rounded p-2">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Question:</p>
+                            <div className="text-sm">
+                              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                {step.instruction}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
+                          <div className="bg-primary/10 border border-primary/20 rounded p-2">
+                            <p className="text-xs font-medium text-primary mb-1">Answer:</p>
+                            <div className="text-sm">
+                              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                {step.answer}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
+                          <details className="group/hint">
+                            <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                              <Lightbulb className="w-3 h-3" />
+                              <span>View Hint</span>
+                            </summary>
+                            <div className="mt-1 bg-warning/10 border border-warning/30 rounded p-2 text-xs">
+                              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                {step.hint}
+                              </ReactMarkdown>
+                            </div>
+                          </details>
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                )}
+
+                {/* Current step */}
                 <div className="bg-accent/30 p-4 rounded-lg">
                   <p className="font-semibold mb-2">Step {currentStep + 1}:</p>
                   <ReactMarkdown
