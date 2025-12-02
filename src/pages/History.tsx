@@ -13,6 +13,7 @@ interface Question {
   image_url: string;
   solution_mode: string;
   created_at: string;
+  solution_data: { solution: string } | null | unknown;
 }
 
 const getSignedUrl = async (imageUrl: string): Promise<string | null> => {
@@ -132,7 +133,17 @@ const History = () => {
             </Card>
           ) : (
             questions.map((question) => (
-              <Card key={question.id} className="p-4">
+              <Card 
+                key={question.id} 
+                className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => navigate('/solution', { 
+                  state: { 
+                    imageUrl: question.image_url, 
+                    mode: question.solution_mode,
+                    cachedSolution: (question.solution_data as { solution?: string } | null)?.solution 
+                  } 
+                })}
+              >
                 <div className="flex gap-4">
                   {signedUrls[question.id] ? (
                     <img
@@ -157,7 +168,10 @@ const History = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDelete(question.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(question.id);
+                    }}
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
                     <Trash2 className="w-4 h-4" />
