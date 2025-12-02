@@ -85,15 +85,24 @@ serve(async (req) => {
 
 For EACH step, provide:
 1) A brief instruction/question for that step
-2) A helpful hint  
+2) A DETAILED, helpful hint that explains the concept or technique needed. Include:
+   - The mathematical principle or formula being used (written in LaTeX notation)
+   - A reminder of how to apply it
+   - Common mistakes to avoid
+   Use LaTeX for all math: inline math with $...$ and display math with $$...$$
 3) A SHORT, simple answer (just the value/number/expression - no explanations!)
+
+HINT EXAMPLES:
+- "Remember the quadratic formula: $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$. Identify $a$, $b$, and $c$ from your equation first."
+- "To find the derivative, use the power rule: $\\frac{d}{dx}(x^n) = nx^{n-1}$. Apply this to each term separately."
+- "For matrix multiplication, the element in row $i$, column $j$ is the dot product of row $i$ from the first matrix and column $j$ from the second."
 
 CRITICAL: The Answer MUST be SHORT and simple so a student can type it exactly. Examples of good answers: "3", "x = 5", "2x + 1", "yes", "no", "linearly independent", "42"
 Bad answers: "The answer is 3 because..." or "Each vector has 3 components"
 
 Format EXACTLY as:
-Step 1: [instruction] | Hint: [hint] | Answer: [short answer]
-Step 2: [instruction] | Hint: [hint] | Answer: [short answer]
+Step 1: [instruction] | Hint: [detailed hint with LaTeX math] | Answer: [short answer]
+Step 2: [instruction] | Hint: [detailed hint with LaTeX math] | Answer: [short answer]
 etc.`;
     }
 
