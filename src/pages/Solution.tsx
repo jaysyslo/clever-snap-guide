@@ -23,11 +23,12 @@ const Solution = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { imageUrl, mode, cachedSolution } = location.state || {};
+  const { imageUrl, mode, cachedSolution, startStep, completedSteps: initialCompletedSteps, viewSummary } = location.state || {};
   const [loading, setLoading] = useState(true);
   const [solution, setSolution] = useState<string>("");
   const [steps, setSteps] = useState<Step[]>([]);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(startStep || 0);
+  const [completedSteps, setCompletedSteps] = useState<number>(initialCompletedSteps || 0);
   const [userAnswer, setUserAnswer] = useState("");
   const [showHint, setShowHint] = useState(false);
   const [attemptedWrong, setAttemptedWrong] = useState(false);
@@ -36,6 +37,7 @@ const Solution = () => {
   const [signedImageUrl, setSignedImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
   const [validating, setValidating] = useState(false);
+  const [showingSummary, setShowingSummary] = useState(viewSummary || false);
 
   useEffect(() => {
     if (!imageUrl || !mode) {
@@ -48,6 +50,10 @@ const Solution = () => {
       if (mode === 'step_by_step') {
         const parsedSteps = parseSteps(cachedSolution);
         setSteps(parsedSteps);
+        // If viewing summary, set currentStep to completed steps count
+        if (viewSummary && initialCompletedSteps !== undefined) {
+          setCurrentStep(initialCompletedSteps);
+        }
       } else {
         setSolution(cachedSolution);
       }
@@ -176,6 +182,12 @@ const Solution = () => {
       if (error) throw error;
 
       if (data.correct) {
+        const newCompletedSteps = currentStep + 1;
+        setCompletedSteps(newCompletedSteps);
+        
+        // Save progress to database
+        saveProgress(newCompletedSteps);
+        
         toast({ 
           title: "✓ Correct!", 
           description: data.feedback || (currentStep < steps.length - 1 ? "Moving to next step" : "Problem completed!")
@@ -223,6 +235,29 @@ const Solution = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const saveProgress = async (newCompletedSteps: number) => {
+    try {
+      await supabase
+        .from("question_history")
+        .update({ 
+          solution_data: { 
+            solution: cachedSolution || solution, 
+            completedSteps: newCompletedSteps 
+          } 
+        })
+        .eq("user_id", user?.id)
+        .eq("image_url", imageUrl)
+        .eq("solution_mode", mode);
+    } catch (error) {
+      console.error('Error saving progress:', error);
+    }
+  };
+
+  const handleContinueSolving = () => {
+    setShowingSummary(false);
+    setCurrentStep(completedSteps);
   };
 
   const handleReport = async () => {
@@ -323,7 +358,95 @@ const Solution = () => {
           <Card className="p-6 space-y-4">
             <h2 className="text-xl font-bold">Step-by-Step Solution</h2>
             
-            {currentStep < steps.length ? (
+            {showingSummary ? (
+              /* Summary view for incomplete problems from history */
+              <div className="space-y-6 py-4">
+                <div className="text-center space-y-2">
+                  {completedSteps >= steps.length ? (
+                    <>
+                      <CheckCircle className="w-16 h-16 text-primary mx-auto" />
+                      <h3 className="text-xl font-bold">Problem Completed!</h3>
+                      <p className="text-muted-foreground">Here's a summary of all the steps you worked through.</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-16 h-16 rounded-full bg-warning/20 flex items-center justify-center mx-auto">
+                        <span className="text-2xl font-bold text-warning">{completedSteps}/{steps.length}</span>
+                      </div>
+                      <h3 className="text-xl font-bold">Progress Summary</h3>
+                      <p className="text-muted-foreground">
+                        You've completed {completedSteps} of {steps.length} steps.
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                {/* Summary of completed steps */}
+                {completedSteps > 0 && (
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-lg border-b pb-2">Completed Steps</h4>
+                    {steps.slice(0, completedSteps).map((step, idx) => (
+                      <div key={idx} className="bg-accent/20 rounded-lg p-4 space-y-3">
+                        <div className="flex items-start gap-3">
+                          <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center flex-shrink-0 text-sm font-semibold">
+                            {idx + 1}
+                          </div>
+                          <div className="flex-1 space-y-3">
+                            <div>
+                              <p className="font-medium text-sm text-muted-foreground mb-1">Question:</p>
+                              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                {step.instruction}
+                              </ReactMarkdown>
+                            </div>
+                            
+                            <div className="bg-primary/10 border border-primary/20 rounded-md p-3">
+                              <p className="font-medium text-sm text-primary mb-1">Answer:</p>
+                              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                {step.answer}
+                              </ReactMarkdown>
+                            </div>
+
+                            <details className="group">
+                              <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground flex items-center gap-2">
+                                <Lightbulb className="w-4 h-4" />
+                                <span>View Hint</span>
+                              </summary>
+                              <div className="mt-2 bg-warning/10 border border-warning/30 rounded-md p-3 text-sm">
+                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                  {step.hint}
+                                </ReactMarkdown>
+                              </div>
+                            </details>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-4">
+                  {completedSteps < steps.length ? (
+                    <>
+                      <Button onClick={handleContinueSolving} className="flex-1">
+                        Continue from Step {completedSteps + 1}
+                      </Button>
+                      <Button variant="outline" onClick={() => navigate('/')}>
+                        Back to Home
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button onClick={() => navigate('/')} className="flex-1">
+                        Solve Another Problem
+                      </Button>
+                      <Button variant="outline" onClick={handleGenerateSimilar}>
+                        Try Similar Problem
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : currentStep < steps.length ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>Step {currentStep + 1} of {steps.length}</span>

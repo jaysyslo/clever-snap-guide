@@ -13,7 +13,7 @@ interface Question {
   image_url: string;
   solution_mode: string;
   created_at: string;
-  solution_data: { solution: string } | null | unknown;
+  solution_data: { solution: string; completedSteps?: number } | null | unknown;
 }
 
 const getSignedUrl = async (imageUrl: string): Promise<string | null> => {
@@ -132,53 +132,66 @@ const History = () => {
               <p className="text-muted-foreground">No questions yet. Start solving problems!</p>
             </Card>
           ) : (
-            questions.map((question) => (
-              <Card 
-                key={question.id} 
-                className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => navigate('/solution', { 
-                  state: { 
-                    imageUrl: question.image_url, 
-                    mode: question.solution_mode,
-                    cachedSolution: (question.solution_data as { solution?: string } | null)?.solution 
-                  } 
-                })}
-              >
-                <div className="flex gap-4">
-                  {signedUrls[question.id] ? (
-                    <img
-                      src={signedUrls[question.id]}
-                      alt="Problem"
-                      className="w-24 h-24 object-cover rounded-lg bg-muted"
-                    />
-                  ) : (
-                    <div className="w-24 h-24 flex items-center justify-center rounded-lg bg-muted">
-                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            questions.map((question) => {
+              const solutionData = question.solution_data as { solution?: string; completedSteps?: number } | null;
+              const cachedSolution = solutionData?.solution;
+              const completedSteps = solutionData?.completedSteps || 0;
+              
+              return (
+                <Card 
+                  key={question.id} 
+                  className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => navigate('/solution', { 
+                    state: { 
+                      imageUrl: question.image_url, 
+                      mode: question.solution_mode,
+                      cachedSolution,
+                      completedSteps,
+                      viewSummary: question.solution_mode === 'step_by_step' && cachedSolution
+                    } 
+                  })}
+                >
+                  <div className="flex gap-4">
+                    {signedUrls[question.id] ? (
+                      <img
+                        src={signedUrls[question.id]}
+                        alt="Problem"
+                        className="w-24 h-24 object-cover rounded-lg bg-muted"
+                      />
+                    ) : (
+                      <div className="w-24 h-24 flex items-center justify-center rounded-lg bg-muted">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="w-4 h-4" />
+                        {format(new Date(question.created_at), "MMM d, yyyy")}
+                      </div>
+                      <p className="text-sm">
+                        Mode: <span className="font-semibold capitalize">{question.solution_mode.replace("_", " ")}</span>
+                      </p>
+                      {question.solution_mode === 'step_by_step' && cachedSolution && (
+                        <p className="text-xs text-muted-foreground">
+                          Progress: {completedSteps > 0 ? `${completedSteps} steps completed` : 'Not started'}
+                        </p>
+                      )}
                     </div>
-                  )}
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="w-4 h-4" />
-                      {format(new Date(question.created_at), "MMM d, yyyy")}
-                    </div>
-                    <p className="text-sm">
-                      Mode: <span className="font-semibold capitalize">{question.solution_mode.replace("_", " ")}</span>
-                    </p>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(question.id);
+                      }}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(question.id);
-                    }}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </Card>
-            ))
+                </Card>
+              );
+            })
           )}
         </div>
       </div>
