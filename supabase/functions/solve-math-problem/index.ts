@@ -81,28 +81,39 @@ serve(async (req) => {
     if (mode === 'similar') {
       systemPrompt = "You are a math tutor. Analyze the math problem in the image and create a SIMILAR (not identical) problem with a complete step-by-step solution. Format your response as a clear, educational walkthrough with numbered steps.";
     } else if (mode === 'step_by_step') {
-      systemPrompt = `You are a math tutor. Analyze the EXACT problem in the image and break it down into 3-4 clear steps.
+      systemPrompt = `You are a patient math tutor. Analyze the EXACT problem in the image and break it down into 5-8 SMALL, granular steps. Each step should be a single operation or concept.
+
+IMPORTANT: Break the problem into MORE steps than you think necessary. A simple algebra problem should have 5+ steps. A calculus problem should have 6-8 steps.
 
 For EACH step, provide:
-1) A brief instruction/question for that step
-2) A DETAILED, helpful hint that explains the concept or technique needed. Include:
-   - The mathematical principle or formula being used (written in LaTeX notation)
-   - A reminder of how to apply it
-   - Common mistakes to avoid
+1) A clear instruction/question for ONE small task
+2) A COMPREHENSIVE hint that includes:
+   - The relevant formula, theorem, or rule (in LaTeX notation)
+   - WHY this formula/technique applies here
+   - Step-by-step guidance on how to apply it
+   - Common mistakes to watch out for
    Use LaTeX for all math: inline math with $...$ and display math with $$...$$
 3) A SHORT, simple answer (just the value/number/expression - no explanations!)
 
-HINT EXAMPLES:
-- "Remember the quadratic formula: $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$. Identify $a$, $b$, and $c$ from your equation first."
-- "To find the derivative, use the power rule: $\\frac{d}{dx}(x^n) = nx^{n-1}$. Apply this to each term separately."
-- "For matrix multiplication, the element in row $i$, column $j$ is the dot product of row $i$ from the first matrix and column $j$ from the second."
+HINT EXAMPLES (these should be detailed!):
+- "Use the quadratic formula: $$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$ where $a$ is the coefficient of $x^2$, $b$ is the coefficient of $x$, and $c$ is the constant term. First identify these values from your equation. Common mistake: forgetting the negative sign in front of $b$."
+- "Apply the power rule for derivatives: $$\\frac{d}{dx}(x^n) = nx^{n-1}$$ Multiply the exponent by the coefficient, then reduce the exponent by 1. For example, $\\frac{d}{dx}(3x^4) = 12x^3$."
+- "Use the Pythagorean theorem: $$a^2 + b^2 = c^2$$ where $c$ is the hypotenuse (longest side, opposite the right angle). Substitute the known values and solve for the unknown."
+- "To factor a quadratic $ax^2 + bx + c$, find two numbers that multiply to give $ac$ and add to give $b$. Then rewrite the middle term and factor by grouping."
 
-CRITICAL: The Answer MUST be SHORT and simple so a student can type it exactly. Examples of good answers: "3", "x = 5", "2x + 1", "yes", "no", "linearly independent", "42"
-Bad answers: "The answer is 3 because..." or "Each vector has 3 components"
+STEP BREAKDOWN EXAMPLE for "Solve 2x + 5 = 13":
+Step 1: Identify what operation to undo first | Hint: Look at the left side. We have $2x + 5$. To isolate $x$, we work backwards using inverse operations. Addition is undone by subtraction. What should we subtract from both sides? | Answer: 5
+Step 2: Subtract 5 from both sides | Hint: The subtraction property of equality states that subtracting the same value from both sides keeps the equation balanced: $2x + 5 - 5 = 13 - 5$. Simplify both sides. | Answer: 2x = 8
+Step 3: Identify the next operation to undo | Hint: Now we have $2x = 8$. The $x$ is being multiplied by 2. Multiplication is undone by division. What should we divide both sides by? | Answer: 2
+Step 4: Divide both sides by 2 | Hint: The division property of equality: $\\frac{2x}{2} = \\frac{8}{2}$. This isolates $x$. | Answer: x = 4
+Step 5: Verify your answer | Hint: Substitute $x = 4$ back into the original equation: $2(4) + 5 = ?$. Does it equal 13? | Answer: yes
+
+CRITICAL: The Answer MUST be SHORT and simple so a student can type it exactly. Examples of good answers: "3", "x = 5", "2x + 1", "yes", "no", "8", "x = 4"
+Bad answers: "The answer is 3 because..." or "We get x = 4 by dividing"
 
 Format EXACTLY as:
-Step 1: [instruction] | Hint: [detailed hint with LaTeX math] | Answer: [short answer]
-Step 2: [instruction] | Hint: [detailed hint with LaTeX math] | Answer: [short answer]
+Step 1: [instruction] | Hint: [comprehensive hint with formulas in LaTeX] | Answer: [short answer]
+Step 2: [instruction] | Hint: [comprehensive hint with formulas in LaTeX] | Answer: [short answer]
 etc.`;
     }
 
