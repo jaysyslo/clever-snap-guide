@@ -429,11 +429,71 @@ const Solution = () => {
                 )}
               </div>
             ) : (
-              <div className="text-center space-y-4 py-8">
-                <CheckCircle className="w-16 h-16 text-primary mx-auto" />
-                <h3 className="text-xl font-bold">Great Job!</h3>
-                <p className="text-muted-foreground">You have completed all steps!</p>
-                <Button onClick={() => navigate('/')}>Solve Another Problem</Button>
+              <div className="space-y-6 py-4">
+                <div className="text-center space-y-2">
+                  <CheckCircle className="w-16 h-16 text-primary mx-auto" />
+                  <h3 className="text-xl font-bold">Problem Completed!</h3>
+                  <p className="text-muted-foreground">Here's a summary of all the steps you worked through.</p>
+                </div>
+
+                {/* Summary of all steps */}
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-lg border-b pb-2">Solution Summary</h4>
+                  {steps.map((step, idx) => (
+                    <div key={idx} className="bg-accent/20 rounded-lg p-4 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center flex-shrink-0 text-sm font-semibold">
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1 space-y-3">
+                          <div>
+                            <p className="font-medium text-sm text-muted-foreground mb-1">Question:</p>
+                            <ReactMarkdown
+                              remarkPlugins={[remarkMath]}
+                              rehypePlugins={[rehypeKatex]}
+                            >
+                              {step.instruction}
+                            </ReactMarkdown>
+                          </div>
+                          
+                          <div className="bg-primary/10 border border-primary/20 rounded-md p-3">
+                            <p className="font-medium text-sm text-primary mb-1">Answer:</p>
+                            <ReactMarkdown
+                              remarkPlugins={[remarkMath]}
+                              rehypePlugins={[rehypeKatex]}
+                            >
+                              {step.answer}
+                            </ReactMarkdown>
+                          </div>
+
+                          <details className="group">
+                            <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground flex items-center gap-2">
+                              <Lightbulb className="w-4 h-4" />
+                              <span>View Hint</span>
+                            </summary>
+                            <div className="mt-2 bg-warning/10 border border-warning/30 rounded-md p-3 text-sm">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkMath]}
+                                rehypePlugins={[rehypeKatex]}
+                              >
+                                {step.hint}
+                              </ReactMarkdown>
+                            </div>
+                          </details>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button onClick={() => navigate('/')} className="flex-1">
+                    Solve Another Problem
+                  </Button>
+                  <Button variant="outline" onClick={handleGenerateSimilar}>
+                    Try Similar Problem
+                  </Button>
+                </div>
               </div>
             )}
           </Card>
