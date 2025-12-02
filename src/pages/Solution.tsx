@@ -23,7 +23,7 @@ const Solution = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { imageUrl, mode } = location.state || {};
+  const { imageUrl, mode, cachedSolution } = location.state || {};
   const [loading, setLoading] = useState(true);
   const [solution, setSolution] = useState<string>("");
   const [steps, setSteps] = useState<Step[]>([]);
@@ -39,9 +39,21 @@ const Solution = () => {
       navigate("/");
       return;
     }
-    generateSolution();
+    
+    // Use cached solution if available
+    if (cachedSolution) {
+      if (mode === 'step_by_step') {
+        const parsedSteps = parseSteps(cachedSolution);
+        setSteps(parsedSteps);
+      } else {
+        setSolution(cachedSolution);
+      }
+      setLoading(false);
+    } else {
+      generateSolution();
+    }
     getSignedImageUrl();
-  }, [imageUrl, mode]);
+  }, [imageUrl, mode, cachedSolution]);
 
   const getSignedImageUrl = async () => {
     try {
