@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Trash2, Calendar } from "lucide-react";
+import { ArrowLeft, Trash2, Calendar, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -15,12 +15,28 @@ interface Question {
   created_at: string;
 }
 
+const getSignedUrl = async (imageUrl: string): Promise<string | null> => {
+  try {
+    const url = new URL(imageUrl);
+    const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)/);
+    if (pathMatch) {
+      const [, bucketName, filePath] = pathMatch;
+      const { data } = await supabase.storage.from(bucketName).createSignedUrl(filePath, 3600);
+      return data?.signedUrl || null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
 const History = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadHistory();
@@ -38,6 +54,14 @@ const History = () => {
 
       if (error) throw error;
       setQuestions(data || []);
+      
+      // Generate signed URLs for all images
+      const urls: Record<string, string> = {};
+      for (const q of data || []) {
+        const signedUrl = await getSignedUrl(q.image_url);
+        if (signedUrl) urls[q.id] = signedUrl;
+      }
+      setSignedUrls(urls);
     } catch (error: any) {
       toast({ title: "Error loading history", description: error.message, variant: "destructive" });
     } finally {
@@ -110,11 +134,17 @@ const History = () => {
             questions.map((question) => (
               <Card key={question.id} className="p-4">
                 <div className="flex gap-4">
-                  <img
-                    src={question.image_url}
-                    alt="Problem"
-                    className="w-24 h-24 object-cover rounded-lg bg-muted"
-                  />
+                  {signedUrls[question.id] ? (
+                    <img
+                      src={signedUrls[question.id]}
+                      alt="Problem"
+                      className="w-24 h-24 object-cover rounded-lg bg-muted"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 flex items-center justify-center rounded-lg bg-muted">
+                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Calendar className="w-4 h-4" />
