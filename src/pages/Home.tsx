@@ -31,9 +31,9 @@ const Home = () => {
         
         // Count completed step-by-step problems as study sessions
         const completedSessions = data?.filter((q) => {
-          if (q.solution_mode !== "step-by-step" || !q.solution_data) return false;
-          const solutionData = q.solution_data as { solution?: { steps?: unknown[] }; completedSteps?: number };
-          const totalSteps = solutionData.solution?.steps?.length || 0;
+          if (q.solution_mode !== "step_by_step" || !q.solution_data) return false;
+          const solutionData = q.solution_data as { totalSteps?: number; completedSteps?: number };
+          const totalSteps = solutionData.totalSteps || 0;
           const completedSteps = solutionData.completedSteps || 0;
           return totalSteps > 0 && completedSteps >= totalSteps;
         }).length || 0;
