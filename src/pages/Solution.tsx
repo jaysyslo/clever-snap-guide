@@ -198,17 +198,25 @@ const Solution = () => {
         // Save progress to database
         saveProgress(newCompletedSteps);
         
-        toast({ 
-          title: "✓ Correct!", 
-          description: data.feedback || (currentStep < steps.length - 1 ? "Moving to next step" : "Problem completed!")
-        });
         if (currentStep < steps.length - 1) {
+          // More steps remaining
+          toast({ 
+            title: "✓ Correct!", 
+            description: data.feedback || "Moving to next step"
+          });
           setCurrentStep(currentStep + 1);
           setUserAnswer("");
           setShowHint(false);
           setAttemptedWrong(false);
           setWrongAttempts(0);
           setShowAnswer(false);
+        } else {
+          // Last step completed - show summary
+          toast({ 
+            title: "🎉 Problem Completed!", 
+            description: "Great work! Here's your solution summary."
+          });
+          setShowingSummary(true);
         }
       } else {
         setAttemptedWrong(true);
