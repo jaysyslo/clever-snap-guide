@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Lightbulb, ListChecks, AlertCircle } from "lucide-react";
+import { ArrowLeft, Lightbulb, ListChecks, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,12 +15,40 @@ const Solve = () => {
   const { imageUrl } = location.state || {};
   const [selectedMode, setSelectedMode] = useState<"similar" | "step_by_step" | null>(null);
   const [loading, setLoading] = useState(false);
+  const [signedImageUrl, setSignedImageUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
 
   useEffect(() => {
     if (!imageUrl) {
       toast({ title: "No image provided", variant: "destructive" });
       navigate("/");
+      return;
     }
+
+    const getSignedUrl = async () => {
+      setImageLoading(true);
+      try {
+        const url = new URL(imageUrl);
+        const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
+        if (pathMatch) {
+          const [, bucketName, filePath] = pathMatch;
+          const { data, error } = await supabase.storage
+            .from(bucketName)
+            .createSignedUrl(filePath, 3600);
+          if (error) throw error;
+          setSignedImageUrl(data.signedUrl);
+        } else {
+          setSignedImageUrl(imageUrl);
+        }
+      } catch (error) {
+        console.error("Error getting signed URL:", error);
+        setSignedImageUrl(imageUrl);
+      } finally {
+        setImageLoading(false);
+      }
+    };
+
+    getSignedUrl();
   }, [imageUrl, navigate, toast]);
 
   const handleModeSelect = async (mode: "similar" | "step_by_step") => {
@@ -69,11 +97,17 @@ const Solve = () => {
 
         {/* Image Preview */}
         <Card className="overflow-hidden">
-          <img
-            src={imageUrl}
-            alt="Math problem"
-            className="w-full h-auto max-h-96 object-contain bg-muted"
-          />
+          {imageLoading ? (
+            <div className="w-full h-64 flex items-center justify-center bg-muted">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <img
+              src={signedImageUrl || imageUrl}
+              alt="Math problem"
+              className="w-full h-auto max-h-96 object-contain bg-muted"
+            />
+          )}
         </Card>
 
         {/* Mode Selection */}
