@@ -257,31 +257,29 @@ const Solution = () => {
         {mode === "similar" ? (
           <Card className="p-6 space-y-4">
             <h2 className="text-xl font-bold">Similar Problem Solution</h2>
-            <div className="prose prose-sm max-w-none dark:prose-invert">
-              <div className="bg-accent/30 p-6 rounded-lg solution-content">
-                <ReactMarkdown
-                  remarkPlugins={[remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
-                  components={{
-                    p: ({ children }) => <p className="mb-4 leading-relaxed">{children}</p>,
-                    h1: ({ children }) => <h1 className="text-xl font-bold mb-3 mt-4">{children}</h1>,
-                    h2: ({ children }) => <h2 className="text-lg font-semibold mb-2 mt-3">{children}</h2>,
-                    h3: ({ children }) => <h3 className="text-base font-semibold mb-2 mt-2">{children}</h3>,
-                    ul: ({ children }) => <ul className="list-disc pl-6 mb-4 space-y-1">{children}</ul>,
-                    ol: ({ children }) => <ol className="list-decimal pl-6 mb-4 space-y-1">{children}</ol>,
-                    li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-                    strong: ({ children }) => <strong className="font-semibold text-primary">{children}</strong>,
-                    code: ({ children }) => (
-                      <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">{children}</code>
-                    ),
-                    blockquote: ({ children }) => (
-                      <blockquote className="border-l-4 border-primary pl-4 italic my-4">{children}</blockquote>
-                    ),
-                  }}
-                >
-                  {solution}
-                </ReactMarkdown>
-              </div>
+            <div className="bg-accent/30 p-6 rounded-lg">
+              <ReactMarkdown
+                remarkPlugins={[remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+                components={{
+                  p: ({children}) => <p className="mb-4 leading-relaxed">{children}</p>,
+                  h1: ({children}) => <h1 className="text-xl font-bold mb-3 mt-4">{children}</h1>,
+                  h2: ({children}) => <h2 className="text-lg font-semibold mb-2 mt-3">{children}</h2>,
+                  h3: ({children}) => <h3 className="text-base font-semibold mb-2 mt-2">{children}</h3>,
+                  ul: ({children}) => <ul className="list-disc pl-6 mb-4 space-y-1">{children}</ul>,
+                  ol: ({children}) => <ol className="list-decimal pl-6 mb-4 space-y-1">{children}</ol>,
+                  li: ({children}) => <li className="leading-relaxed">{children}</li>,
+                  strong: ({children}) => <strong className="font-semibold text-primary">{children}</strong>,
+                  code: ({children}) => (
+                    <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">{children}</code>
+                  ),
+                  blockquote: ({children}) => (
+                    <blockquote className="border-l-4 border-primary pl-4 italic my-4">{children}</blockquote>
+                  ),
+                }}
+              >
+                {solution}
+              </ReactMarkdown>
             </div>
           </Card>
         ) : (
