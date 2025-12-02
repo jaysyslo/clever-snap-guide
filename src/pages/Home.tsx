@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Camera, Upload, History, Settings, Calculator } from "lucide-react";
@@ -11,6 +11,43 @@ const Home = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
+  const [problemsSolved, setProblemsSolved] = useState(0);
+  const [studySessions, setStudySessions] = useState(0);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from("question_history")
+          .select("solution_mode, solution_data")
+          .eq("user_id", user.id);
+
+        if (error) throw error;
+
+        setProblemsSolved(data?.length || 0);
+        
+        // Count completed step-by-step problems as study sessions
+        const completedSessions = data?.filter((q) => {
+          if (q.solution_mode !== "step-by-step" || !q.solution_data) return false;
+          const solutionData = q.solution_data as { solution?: { steps?: unknown[] }; completedSteps?: number };
+          const totalSteps = solutionData.solution?.steps?.length || 0;
+          const completedSteps = solutionData.completedSteps || 0;
+          return totalSteps > 0 && completedSteps >= totalSteps;
+        }).length || 0;
+        
+        setStudySessions(completedSessions);
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchStats();
+  }, [user]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -120,11 +157,15 @@ const Home = () => {
           <h3 className="font-semibold mb-4">Your Progress</h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="text-center">
-              <div className="text-3xl font-bold text-primary">0</div>
+              <div className="text-3xl font-bold text-primary">
+                {loadingStats ? "—" : problemsSolved}
+              </div>
               <div className="text-sm text-muted-foreground">Problems Solved</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-secondary">0</div>
+              <div className="text-3xl font-bold text-secondary">
+                {loadingStats ? "—" : studySessions}
+              </div>
               <div className="text-sm text-muted-foreground">Study Sessions</div>
             </div>
           </div>
