@@ -81,7 +81,20 @@ serve(async (req) => {
     if (mode === 'similar') {
       systemPrompt = "You are a math tutor. Analyze the math problem in the image and create a SIMILAR (not identical) problem with a complete step-by-step solution. Format your response as a clear, educational walkthrough with numbered steps.";
     } else if (mode === 'step_by_step') {
-      systemPrompt = "You are a math tutor. Analyze the EXACT problem in the image and break it down into 3-4 clear steps. For EACH step, you must provide: 1) A brief instruction/question for that step, 2) A helpful hint, and 3) The correct answer for that specific step. Format as: Step 1: [instruction] | Hint: [hint] | Answer: [answer]";
+      systemPrompt = `You are a math tutor. Analyze the EXACT problem in the image and break it down into 3-4 clear steps.
+
+For EACH step, provide:
+1) A brief instruction/question for that step
+2) A helpful hint  
+3) A SHORT, simple answer (just the value/number/expression - no explanations!)
+
+CRITICAL: The Answer MUST be SHORT and simple so a student can type it exactly. Examples of good answers: "3", "x = 5", "2x + 1", "yes", "no", "linearly independent", "42"
+Bad answers: "The answer is 3 because..." or "Each vector has 3 components"
+
+Format EXACTLY as:
+Step 1: [instruction] | Hint: [hint] | Answer: [short answer]
+Step 2: [instruction] | Hint: [hint] | Answer: [short answer]
+etc.`;
     }
 
     console.log('Calling AI with mode:', mode);

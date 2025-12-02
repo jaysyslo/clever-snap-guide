@@ -147,9 +147,15 @@ const Solution = () => {
     if (!steps[currentStep]) return;
 
     const normalizeAnswer = (ans: string) => 
-      ans.trim().toLowerCase().replace(/\s+/g, '');
+      ans.trim().toLowerCase().replace(/\s+/g, '').replace(/[.,;:!?]/g, '');
 
-    const isCorrect = normalizeAnswer(userAnswer) === normalizeAnswer(steps[currentStep].answer);
+    const userNormalized = normalizeAnswer(userAnswer);
+    const correctNormalized = normalizeAnswer(steps[currentStep].answer);
+    
+    // Check for exact match or if the key answer is contained
+    const isCorrect = userNormalized === correctNormalized || 
+      correctNormalized.includes(userNormalized) && userNormalized.length > 0 ||
+      userNormalized.includes(correctNormalized) && correctNormalized.length > 0;
 
     if (isCorrect) {
       toast({ 
