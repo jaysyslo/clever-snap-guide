@@ -31,6 +31,8 @@ const Solution = () => {
   const [userAnswer, setUserAnswer] = useState("");
   const [showHint, setShowHint] = useState(false);
   const [attemptedWrong, setAttemptedWrong] = useState(false);
+  const [wrongAttempts, setWrongAttempts] = useState(0);
+  const [showAnswer, setShowAnswer] = useState(false);
   const [signedImageUrl, setSignedImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -183,9 +185,12 @@ const Solution = () => {
           setUserAnswer("");
           setShowHint(false);
           setAttemptedWrong(false);
+          setWrongAttempts(0);
+          setShowAnswer(false);
         }
       } else {
         setAttemptedWrong(true);
+        setWrongAttempts(prev => prev + 1);
         toast({ 
           title: "Not quite right", 
           description: data.feedback || "Try again or view a hint",
@@ -388,6 +393,30 @@ const Solution = () => {
                     )}
                   </div>
                 </div>
+
+                {wrongAttempts >= 3 && !showAnswer && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowAnswer(true)}
+                    className="w-full"
+                  >
+                    Reveal Answer
+                  </Button>
+                )}
+
+                {showAnswer && (
+                  <div className="bg-primary/10 border border-primary/30 p-4 rounded-lg">
+                    <p className="font-semibold text-sm text-primary mb-1">Expected Answer:</p>
+                    <div className="text-foreground">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                      >
+                        {steps[currentStep].answer}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                )}
 
                 {attemptedWrong && (
                   <Button
