@@ -11,6 +11,7 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+import confetti from "canvas-confetti";
 
 interface Step {
   instruction: string;
@@ -211,7 +212,28 @@ const Solution = () => {
           setWrongAttempts(0);
           setShowAnswer(false);
         } else {
-          // Last step completed - show summary
+          // Last step completed - show summary with confetti celebration
+          confetti({
+            particleCount: 150,
+            spread: 80,
+            origin: { y: 0.6 }
+          });
+          // Fire a second burst for extra celebration
+          setTimeout(() => {
+            confetti({
+              particleCount: 100,
+              angle: 60,
+              spread: 55,
+              origin: { x: 0 }
+            });
+            confetti({
+              particleCount: 100,
+              angle: 120,
+              spread: 55,
+              origin: { x: 1 }
+            });
+          }, 250);
+          
           toast({ 
             title: "🎉 Problem Completed!", 
             description: "Great work! Here's your solution summary."
