@@ -24,12 +24,13 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Fetch user's question history
+    // Fetch user's question history including solution_data
     const { data: questions, error } = await supabase
       .from('question_history')
-      .select('problem_text, solution_mode, created_at')
+      .select('problem_text, solution_mode, solution_data, created_at')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(20); // Limit to recent problems to avoid token limits
 
     if (error) throw error;
 
@@ -40,14 +41,40 @@ serve(async (req) => {
       );
     }
 
-    // Prepare context from question history
-    const historyContext = questions.map((q, idx) => `Problem ${idx + 1} (Mode: ${q.solution_mode}):\n-- Problem Text: ${q.problem_text}`).join('\n\n');
+    // Prepare context from question history - extract solution content
+    const historyContext = questions.map((q, idx) => {
+      let content = `Problem ${idx + 1} (Mode: ${q.solution_mode}):`;
+      
+      // Use solution_data if available (contains actual solution text)
+      if (q.solution_data) {
+        const solutionData = q.solution_data as { solution?: string; rawSolution?: string };
+        const solutionText = solutionData.rawSolution || solutionData.solution || '';
+        if (solutionText) {
+          // Truncate very long solutions to save tokens
+          const truncated = solutionText.length > 2000 ? solutionText.substring(0, 2000) + '...' : solutionText;
+          content += `\n${truncated}`;
+        }
+      } else if (q.problem_text) {
+        content += `\n${q.problem_text}`;
+      }
+      
+      return content;
+    }).filter(c => c.length > 50).join('\n\n---\n\n'); // Only include entries with actual content
 
-    const systemPrompt = `You are an expert math tutor creating a highly personalized study guide. Analyze the provided problem texts and solution modes from the history. Identify the mathematical concepts involved, common mistakes, and areas needing review. Your response MUST be formatted with clear headings for:
+    console.log(`Found ${questions.length} questions, context length: ${historyContext.length}`);
+
+    if (!historyContext || historyContext.length < 100) {
+      return new Response(
+        JSON.stringify({ error: 'Not enough problem data to generate a study guide. Please solve more problems first.' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const systemPrompt = `You are an expert math tutor creating a highly personalized study guide. Analyze the provided math solutions from the student's history. Identify the mathematical concepts involved, patterns in the types of problems solved, and areas that could benefit from more practice. Use LaTeX notation (e.g., $x^2$) for any mathematical expressions. Your response MUST be formatted with clear headings for:
     1. Summary of Topics Covered
     2. Key Concepts to Review
     3. Practice Problems for Weak Areas (include an example problem for each area)
-    4. Study Recommendations`; 
+    4. Study Recommendations`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
