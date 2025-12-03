@@ -2,6 +2,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 
 const StudyGuide = () => {
   const location = useLocation();
@@ -35,8 +39,10 @@ const StudyGuide = () => {
         <Card className="p-6 space-y-4">
           <h1 className="text-2xl font-bold">Your Personalized Study Guide</h1>
           <div className="prose prose-sm max-w-none dark:prose-invert">
-            <div className="bg-accent/30 p-6 rounded-lg whitespace-pre-wrap">
-              {studyGuide}
+            <div className="bg-accent/30 p-6 rounded-lg">
+              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                {studyGuide}
+              </ReactMarkdown>
             </div>
           </div>
         </Card>
