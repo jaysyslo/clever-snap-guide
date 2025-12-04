@@ -54,52 +54,34 @@ const StudyGuide = () => {
     setExporting(true);
     
     try {
-      // Get the HTML content
       const content = contentRef.current.innerHTML;
       
-      // Get KaTeX CSS
-      const katexCSS = Array.from(document.styleSheets)
-        .filter(sheet => {
-          try {
-            return sheet.href?.includes('katex') || 
-                   Array.from(sheet.cssRules || []).some(rule => 
-                     rule.cssText?.includes('.katex')
-                   );
-          } catch {
-            return false;
-          }
-        })
-        .map(sheet => {
-          try {
-            return Array.from(sheet.cssRules || []).map(rule => rule.cssText).join('\n');
-          } catch {
-            return '';
-          }
-        })
-        .join('\n');
+      // Create hidden iframe for printing
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = 'none';
+      document.body.appendChild(iframe);
 
-      // Create print window
-      const printWindow = window.open('', '_blank', 'width=800,height=600');
-      if (!printWindow) {
-        toast({ title: "Please allow popups to export PDF", variant: "destructive" });
+      const iframeDoc = iframe.contentWindow?.document;
+      if (!iframeDoc) {
+        toast({ title: "Export failed", variant: "destructive" });
         setExporting(false);
         return;
       }
 
-      // Write the document
-      printWindow.document.write(`
+      iframeDoc.open();
+      iframeDoc.write(`
         <!DOCTYPE html>
         <html>
         <head>
           <title>Study Guide - ${new Date().toLocaleDateString()}</title>
           <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
           <style>
-            ${katexCSS}
-            
-            * {
-              box-sizing: border-box;
-            }
-            
+            * { box-sizing: border-box; }
             body {
               font-family: 'Times New Roman', Times, Georgia, serif;
               font-size: 12pt;
@@ -111,134 +93,45 @@ const StudyGuide = () => {
               max-width: 800px;
               margin: 0 auto;
             }
-            
-            h1 {
-              font-size: 20pt;
-              font-weight: bold;
-              margin: 24pt 0 12pt 0;
-              padding-bottom: 8pt;
-              border-bottom: 2px solid #333;
-            }
-            
-            h2 {
-              font-size: 16pt;
-              font-weight: bold;
-              margin: 20pt 0 10pt 0;
-              color: #333;
-            }
-            
-            h3 {
-              font-size: 14pt;
-              font-weight: bold;
-              margin: 16pt 0 8pt 0;
-            }
-            
-            p {
-              margin: 10pt 0;
-              text-align: justify;
-            }
-            
-            ul, ol {
-              margin: 10pt 0 10pt 20pt;
-              padding-left: 15pt;
-            }
-            
-            li {
-              margin: 6pt 0;
-            }
-            
-            hr {
-              border: none;
-              border-top: 1px solid #ccc;
-              margin: 20pt 0;
-            }
-            
-            details {
-              margin: 16pt 0;
-              padding: 12pt;
-              background: #f9f9f9;
-              border-left: 3px solid #333;
-            }
-            
-            details[open] summary {
-              margin-bottom: 10pt;
-            }
-            
-            summary {
-              font-weight: bold;
-              cursor: pointer;
-            }
-            
-            .katex {
-              font-size: 1.1em;
-            }
-            
-            .katex-display {
-              margin: 16pt 0;
-              text-align: center;
-            }
-            
-            code {
-              background: #f4f4f4;
-              padding: 2px 6px;
-              border-radius: 3px;
-              font-family: 'Courier New', monospace;
-            }
-            
-            strong {
-              font-weight: bold;
-            }
-            
-            em {
-              font-style: italic;
-            }
-            
-            /* Print-specific styles */
+            h1 { font-size: 20pt; font-weight: bold; margin: 24pt 0 12pt 0; padding-bottom: 8pt; border-bottom: 2px solid #333; }
+            h2 { font-size: 16pt; font-weight: bold; margin: 20pt 0 10pt 0; color: #333; }
+            h3 { font-size: 14pt; font-weight: bold; margin: 16pt 0 8pt 0; }
+            p { margin: 10pt 0; text-align: justify; }
+            ul, ol { margin: 10pt 0 10pt 20pt; padding-left: 15pt; }
+            li { margin: 6pt 0; }
+            hr { border: none; border-top: 1px solid #ccc; margin: 20pt 0; }
+            details { margin: 16pt 0; padding: 12pt; background: #f9f9f9; border-left: 3px solid #333; }
+            details[open] summary { margin-bottom: 10pt; }
+            summary { font-weight: bold; }
+            .katex { font-size: 1.1em; }
+            .katex-display { margin: 16pt 0; text-align: center; }
+            code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; }
+            strong { font-weight: bold; }
+            em { font-style: italic; }
             @media print {
-              body {
-                padding: 0;
-                margin: 20px;
-              }
-              
-              details {
-                break-inside: avoid;
-              }
-              
-              h1, h2, h3 {
-                break-after: avoid;
-              }
-              
-              /* Expand all details for printing */
-              details {
-                display: block !important;
-              }
-              
-              details > summary {
-                display: block !important;
-              }
-              
-              details > *:not(summary) {
-                display: block !important;
-              }
+              body { padding: 0; margin: 20px; }
+              details { break-inside: avoid; }
+              h1, h2, h3 { break-after: avoid; }
             }
           </style>
         </head>
-        <body>
-          ${content}
-          <script>
-            // Expand all details elements
-            document.querySelectorAll('details').forEach(d => d.setAttribute('open', 'true'));
-            
-            // Wait for KaTeX to render, then print
-            setTimeout(() => {
-              window.print();
-            }, 500);
-          </script>
-        </body>
+        <body>${content}</body>
         </html>
       `);
-      
-      printWindow.document.close();
+      iframeDoc.close();
+
+      // Expand all details and print after content loads
+      setTimeout(() => {
+        iframeDoc.querySelectorAll('details').forEach(d => d.setAttribute('open', 'true'));
+        
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        
+        // Clean up iframe after printing
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 1000);
+      }, 500);
       
       toast({ 
         title: "Print dialog opened", 
