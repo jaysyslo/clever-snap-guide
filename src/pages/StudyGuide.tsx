@@ -38,9 +38,24 @@ const StudyGuide = () => {
 
         <Card className="p-6 space-y-4">
           <h1 className="text-2xl font-bold">Your Personalized Study Guide</h1>
-          <div className="prose prose-sm max-w-none dark:prose-invert">
+          <div className="prose prose-sm max-w-none dark:prose-invert [&_details]:my-4 [&_details]:rounded-lg [&_details]:bg-muted/50 [&_details]:p-4 [&_summary]:cursor-pointer [&_summary]:font-semibold [&_summary]:text-primary [&_summary:hover]:text-primary/80 [&_details[open]_summary]:mb-3 [&_details[open]]:border [&_details[open]]:border-border">
             <div className="bg-accent/30 p-6 rounded-lg">
-              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+              <ReactMarkdown 
+                remarkPlugins={[remarkMath]} 
+                rehypePlugins={[rehypeKatex]}
+                components={{
+                  details: ({ children, ...props }) => (
+                    <details {...props} className="my-4 rounded-lg bg-muted/50 p-4 border border-border">
+                      {children}
+                    </details>
+                  ),
+                  summary: ({ children, ...props }) => (
+                    <summary {...props} className="cursor-pointer font-semibold text-primary hover:text-primary/80">
+                      {children}
+                    </summary>
+                  ),
+                }}
+              >
                 {studyGuide}
               </ReactMarkdown>
             </div>
