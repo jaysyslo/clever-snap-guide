@@ -164,11 +164,15 @@ etc.`;
           messages: [
             { 
               role: 'system', 
-              content: 'You are a math topic classifier. Given a math problem solution, identify 1-3 main mathematical topics/concepts covered. Return ONLY a comma-separated list of short topic names (2-3 words max each). Examples: "Quadratic Equations", "Derivatives", "Trigonometry", "Linear Algebra", "Fractions", "Geometry". Return nothing else.' 
+              content: `You are a math topic classifier. Given a math problem solution, identify 3-5 tags that describe the problem. Include BOTH:
+1. General subject area (1-2 tags): e.g., "Linear Algebra", "Calculus", "Trigonometry", "Statistics"
+2. Specific concepts, theorems, or techniques used (2-3 tags): e.g., "Linear Independence", "Chain Rule", "Gaussian Elimination", "Pythagorean Theorem", "Integration by Parts", "Row Echelon Form", "Eigenvalues", "L'Hôpital's Rule"
+
+Return ONLY a comma-separated list of tags (2-4 words max each). Be specific about the actual mathematical concepts and theorems applied in the solution. Return nothing else.` 
             },
             { 
               role: 'user', 
-              content: `Identify the math topics in this solution:\n\n${solution.substring(0, 1000)}`
+              content: `Identify the math topics and specific concepts/theorems in this solution:\n\n${solution.substring(0, 1500)}`
             }
           ],
         }),
@@ -177,7 +181,7 @@ etc.`;
       if (tagsResponse.ok) {
         const tagsData = await tagsResponse.json();
         const rawTags = tagsData.choices[0].message.content.trim();
-        tags = rawTags.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0 && t.length < 30).slice(0, 3);
+        tags = rawTags.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0 && t.length < 40).slice(0, 5);
         console.log('Generated tags:', tags);
       }
     } catch (tagError) {
