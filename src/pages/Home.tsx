@@ -89,7 +89,7 @@ const Home = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-md">
-              <span className="text-primary-foreground font-bold text-sm">F(x)</span>
+              <span className="text-primary-foreground font-math italic text-base">F(x)</span>
             </div>
             <div>
               <h1 className="text-2xl font-bold">Foundx</h1>
