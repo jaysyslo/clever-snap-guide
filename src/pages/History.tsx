@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Trash2, Calendar, Loader2, BookOpen } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ArrowLeft, Trash2, Calendar, Loader2, BookOpen, Pencil } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +48,8 @@ const History = () => {
   const [studyGuides, setStudyGuides] = useState<StudyGuide[]>([]);
   const [loading, setLoading] = useState(true);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [editingGuide, setEditingGuide] = useState<StudyGuide | null>(null);
+  const [newTitle, setNewTitle] = useState("");
 
   useEffect(() => {
     loadHistory();
@@ -121,6 +125,33 @@ const History = () => {
     }
   };
 
+  const handleRenameGuide = async () => {
+    if (!editingGuide || !newTitle.trim()) return;
+    
+    try {
+      const { error } = await supabase
+        .from("study_guides")
+        .update({ title: newTitle.trim() })
+        .eq("id", editingGuide.id);
+
+      if (error) throw error;
+      
+      setStudyGuides(studyGuides.map(g => 
+        g.id === editingGuide.id ? { ...g, title: newTitle.trim() } : g
+      ));
+      setEditingGuide(null);
+      setNewTitle("");
+      toast({ title: "Study guide renamed" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const openRenameDialog = (guide: StudyGuide) => {
+    setEditingGuide(guide);
+    setNewTitle(guide.title);
+  };
+
   const handleGenerateStudyGuide = async () => {
     try {
       toast({ title: "Generating study guide...", description: "This may take a moment." });
@@ -182,17 +213,30 @@ const History = () => {
                       {format(new Date(guide.created_at), "MMM d, yyyy")}
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteGuide(guide.id);
-                    }}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openRenameDialog(guide);
+                      }}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteGuide(guide.id);
+                      }}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </Card>
             ))}
@@ -297,6 +341,29 @@ const History = () => {
           )}
         </div>
       </div>
+
+      {/* Rename Dialog */}
+      <Dialog open={!!editingGuide} onOpenChange={(open) => !open && setEditingGuide(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Study Guide</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Enter new name"
+            maxLength={100}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingGuide(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRenameGuide} disabled={!newTitle.trim()}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
