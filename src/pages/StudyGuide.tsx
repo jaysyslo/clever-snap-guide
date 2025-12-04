@@ -54,7 +54,46 @@ const StudyGuide = () => {
     setExporting(true);
     
     try {
-      const content = contentRef.current.innerHTML;
+      // Clone content to manipulate
+      const tempContainer = document.createElement('div');
+      tempContainer.innerHTML = contentRef.current.innerHTML;
+      
+      // Extract solutions from details elements and collect them
+      const solutions: { problemNum: number; content: string }[] = [];
+      const detailsElements = tempContainer.querySelectorAll('details');
+      let problemNum = 1;
+      
+      detailsElements.forEach((details) => {
+        const summary = details.querySelector('summary');
+        if (summary?.textContent?.toLowerCase().includes('solution')) {
+          // Get solution content (everything except summary)
+          const solutionContent = Array.from(details.children)
+            .filter(child => child.tagName !== 'SUMMARY')
+            .map(child => child.outerHTML)
+            .join('');
+          
+          solutions.push({ problemNum, content: solutionContent });
+          problemNum++;
+          
+          // Remove the details element from main content
+          details.remove();
+        }
+      });
+      
+      const mainContent = tempContainer.innerHTML;
+      
+      // Build solutions section
+      const solutionsSection = solutions.length > 0 ? `
+        <div class="solutions-section">
+          <h1>Full Solutions</h1>
+          ${solutions.map(s => `
+            <div class="solution-item">
+              <h3>Problem ${s.problemNum} Solution</h3>
+              ${s.content}
+            </div>
+          `).join('')}
+        </div>
+      ` : '';
       
       // Create hidden iframe for printing
       const iframe = document.createElement('iframe');
@@ -100,30 +139,39 @@ const StudyGuide = () => {
             ul, ol { margin: 10pt 0 10pt 20pt; padding-left: 15pt; }
             li { margin: 6pt 0; }
             hr { border: none; border-top: 1px solid #ccc; margin: 20pt 0; }
-            details { margin: 16pt 0; padding: 12pt; background: #f9f9f9; border-left: 3px solid #333; }
-            details[open] summary { margin-bottom: 10pt; }
-            summary { font-weight: bold; }
             .katex { font-size: 1.1em; }
             .katex-display { margin: 16pt 0; text-align: center; }
             code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; }
             strong { font-weight: bold; }
             em { font-style: italic; }
+            .solutions-section {
+              page-break-before: always;
+              margin-top: 40pt;
+            }
+            .solution-item {
+              margin: 20pt 0;
+              padding: 12pt;
+              background: #f9f9f9;
+              border-left: 3px solid #333;
+            }
             @media print {
               body { padding: 0; margin: 20px; }
-              details { break-inside: avoid; }
               h1, h2, h3 { break-after: avoid; }
+              .solutions-section { page-break-before: always; }
+              .solution-item { break-inside: avoid; }
             }
           </style>
         </head>
-        <body>${content}</body>
+        <body>
+          ${mainContent}
+          ${solutionsSection}
+        </body>
         </html>
       `);
       iframeDoc.close();
 
-      // Expand all details and print after content loads
+      // Print after content loads
       setTimeout(() => {
-        iframeDoc.querySelectorAll('details').forEach(d => d.setAttribute('open', 'true'));
-        
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
         
