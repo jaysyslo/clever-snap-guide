@@ -52,6 +52,25 @@ const History = () => {
   const [editingGuide, setEditingGuide] = useState<StudyGuide | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [tagSearch, setTagSearch] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Extract all unique tags from questions
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    questions.forEach(q => {
+      q.tags?.forEach(tag => tagSet.add(tag));
+    });
+    return Array.from(tagSet).sort();
+  }, [questions]);
+
+  // Filter tags for autocomplete suggestions
+  const tagSuggestions = useMemo(() => {
+    if (!tagSearch.trim()) return allTags.slice(0, 8);
+    const searchLower = tagSearch.toLowerCase();
+    return allTags.filter(tag => 
+      tag.toLowerCase().includes(searchLower)
+    ).slice(0, 8);
+  }, [allTags, tagSearch]);
 
   // Filter questions based on tag search
   const filteredQuestions = useMemo(() => {
@@ -62,7 +81,15 @@ const History = () => {
     );
   }, [questions, tagSearch]);
 
-  const clearSearch = () => setTagSearch("");
+  const clearSearch = () => {
+    setTagSearch("");
+    setShowSuggestions(false);
+  };
+
+  const selectTag = (tag: string) => {
+    setTagSearch(tag);
+    setShowSuggestions(false);
+  };
 
   useEffect(() => {
     loadHistory();
@@ -212,13 +239,18 @@ const History = () => {
         )}
 
         {/* Tag Search Section */}
-        {questions.length > 0 && (
+        {questions.length > 0 && allTags.length > 0 && (
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
             <Input
               placeholder="Search by topic..."
               value={tagSearch}
-              onChange={(e) => setTagSearch(e.target.value)}
+              onChange={(e) => {
+                setTagSearch(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
               className="pl-9 pr-9"
             />
             {tagSearch && (
@@ -226,10 +258,26 @@ const History = () => {
                 variant="ghost"
                 size="icon"
                 onClick={clearSearch}
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 z-10"
               >
                 <X className="w-4 h-4" />
               </Button>
+            )}
+            {/* Autocomplete Suggestions */}
+            {showSuggestions && tagSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-20 overflow-hidden">
+                {tagSuggestions.map((tag) => (
+                  <button
+                    key={tag}
+                    onMouseDown={() => selectTag(tag)}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors flex items-center gap-2"
+                  >
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                      {tag}
+                    </span>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         )}
