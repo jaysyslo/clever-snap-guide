@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import html2pdf from "html2pdf.js";
+import katex from "katex";
 import "katex/dist/katex.min.css";
 
 const StudyGuide = () => {
@@ -80,11 +81,29 @@ const StudyGuide = () => {
         }
       });
 
-      // Create a clean HTML element for PDF
+      // Create a clean HTML element for PDF with KaTeX styles
       const pdfContainer = document.createElement('div');
       pdfContainer.style.cssText = 'font-family: Georgia, serif; color: #1a1a1a; background: white; padding: 20px; max-width: 800px;';
       
-      pdfContainer.innerHTML = `
+      // Get KaTeX CSS and inject it
+      const katexStyles = document.querySelector('link[href*="katex"]');
+      const styleTag = document.createElement('style');
+      if (katexStyles) {
+        const katexCSSLink = katexStyles.getAttribute('href');
+        if (katexCSSLink) {
+          try {
+            const response = await fetch(katexCSSLink);
+            styleTag.textContent = await response.text();
+          } catch {
+            // Fallback: basic KaTeX styling
+            styleTag.textContent = '.katex { font-size: 1.1em; } .katex-display { display: block; margin: 1em 0; text-align: center; }';
+          }
+        }
+      }
+      pdfContainer.appendChild(styleTag);
+      
+      const contentWrapper = document.createElement('div');
+      contentWrapper.innerHTML = `
         <div style="margin-bottom: 40px;">
           <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px;">Your Personalized Study Guide</h1>
           <div id="main-content" style="line-height: 1.8;"></div>
@@ -96,10 +115,11 @@ const StudyGuide = () => {
           </div>
         ` : ''}
       `;
+      pdfContainer.appendChild(contentWrapper);
 
       // Render markdown to HTML for main content
-      const mainContentDiv = pdfContainer.querySelector('#main-content');
-      const solutionsContentDiv = pdfContainer.querySelector('#solutions-content');
+      const mainContentDiv = contentWrapper.querySelector('#main-content');
+      const solutionsContentDiv = contentWrapper.querySelector('#solutions-content');
       
       if (mainContentDiv) {
         mainContentDiv.innerHTML = await renderMarkdownToHTML(mainContent);
@@ -130,8 +150,29 @@ const StudyGuide = () => {
   };
 
   const renderMarkdownToHTML = async (markdown: string): Promise<string> => {
-    // Simple markdown to HTML conversion for PDF
-    let html = markdown
+    // First render LaTeX expressions using KaTeX
+    let html = markdown;
+    
+    // Render display math ($$...$$)
+    html = html.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
+      try {
+        return katex.renderToString(math.trim(), { displayMode: true, throwOnError: false });
+      } catch {
+        return `<span style="color: red;">[Math Error]</span>`;
+      }
+    });
+    
+    // Render inline math ($...$)
+    html = html.replace(/\$([^\$\n]+?)\$/g, (_, math) => {
+      try {
+        return katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
+      } catch {
+        return `<span style="color: red;">[Math Error]</span>`;
+      }
+    });
+    
+    // Convert markdown to HTML
+    html = html
       .replace(/^### (.*$)/gim, '<h3 style="font-size: 16px; font-weight: 600; margin: 20px 0 10px;">$1</h3>')
       .replace(/^## (.*$)/gim, '<h2 style="font-size: 18px; font-weight: 600; margin: 25px 0 12px; color: #4a5568;">$1</h2>')
       .replace(/^# (.*$)/gim, '<h1 style="font-size: 22px; font-weight: bold; margin: 30px 0 15px;">$1</h1>')
@@ -140,8 +181,6 @@ const StudyGuide = () => {
       .replace(/^\- (.*$)/gim, '<li style="margin: 8px 0; margin-left: 20px;">$1</li>')
       .replace(/^\d+\. (.*$)/gim, '<li style="margin: 8px 0; margin-left: 20px;">$1</li>')
       .replace(/\n\n/g, '</p><p style="margin: 12px 0;">')
-      .replace(/\$\$(.*?)\$\$/g, '<span style="font-family: monospace; background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">$1</span>')
-      .replace(/\$(.*?)\$/g, '<span style="font-family: monospace; background: #f5f5f5; padding: 1px 4px; border-radius: 2px;">$1</span>')
       .replace(/---/g, '<hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">')
       .replace(/\[See solutions section\]/g, '<em style="color: #666;">[See solutions section at end of document]</em>');
     
