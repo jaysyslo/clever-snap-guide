@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Trash2, Calendar, Loader2 } from "lucide-react";
+import { ArrowLeft, Trash2, Calendar, Loader2, BookOpen } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,13 @@ interface Question {
   solution_mode: string;
   created_at: string;
   solution_data: { solution: string; completedSteps?: number; totalSteps?: number } | null | unknown;
+}
+
+interface StudyGuide {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
 }
 
 const getSignedUrl = async (imageUrl: string): Promise<string | null> => {
@@ -36,6 +43,7 @@ const History = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [studyGuides, setStudyGuides] = useState<StudyGuide[]>([]);
   const [loading, setLoading] = useState(true);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
 
@@ -47,18 +55,29 @@ const History = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from("question_history")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+      // Load questions and study guides in parallel
+      const [questionsResult, guidesResult] = await Promise.all([
+        supabase
+          .from("question_history")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("study_guides")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+      ]);
 
-      if (error) throw error;
-      setQuestions(data || []);
+      if (questionsResult.error) throw questionsResult.error;
+      if (guidesResult.error) throw guidesResult.error;
+      
+      setQuestions(questionsResult.data || []);
+      setStudyGuides(guidesResult.data || []);
       
       // Generate signed URLs for all images
       const urls: Record<string, string> = {};
-      for (const q of data || []) {
+      for (const q of questionsResult.data || []) {
         const signedUrl = await getSignedUrl(q.image_url);
         if (signedUrl) urls[q.id] = signedUrl;
       }
@@ -81,6 +100,22 @@ const History = () => {
       
       setQuestions(questions.filter(q => q.id !== id));
       toast({ title: "Question deleted" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteGuide = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("study_guides")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      
+      setStudyGuides(studyGuides.filter(g => g.id !== id));
+      toast({ title: "Study guide deleted" });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -124,7 +159,51 @@ const History = () => {
           </Button>
         )}
 
-        <div className="space-y-4">
+        {/* Saved Study Guides Section */}
+        {studyGuides.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-muted-foreground">Saved Study Guides</h2>
+            {studyGuides.map((guide) => (
+              <Card
+                key={guide.id}
+                className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => navigate('/study-guide', { 
+                  state: { studyGuide: guide.content, savedGuideId: guide.id } 
+                })}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <BookOpen className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">{guide.title}</p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="w-4 h-4" />
+                      {format(new Date(guide.created_at), "MMM d, yyyy")}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteGuide(guide.id);
+                    }}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Questions Section */}
+        <div className="space-y-3">
+          {studyGuides.length > 0 && questions.length > 0 && (
+            <h2 className="text-lg font-semibold text-muted-foreground">Problem History</h2>
+          )}
           {loading ? (
             <div className="text-center text-muted-foreground py-8">Loading...</div>
           ) : questions.length === 0 ? (
