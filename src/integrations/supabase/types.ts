@@ -85,6 +85,7 @@ export type Database = {
           problem_text: string | null
           solution_data: Json | null
           solution_mode: string
+          tags: string[] | null
           user_id: string
         }
         Insert: {
@@ -94,6 +95,7 @@ export type Database = {
           problem_text?: string | null
           solution_data?: Json | null
           solution_mode: string
+          tags?: string[] | null
           user_id: string
         }
         Update: {
@@ -103,6 +105,7 @@ export type Database = {
           problem_text?: string | null
           solution_data?: Json | null
           solution_mode?: string
+          tags?: string[] | null
           user_id?: string
         }
         Relationships: [

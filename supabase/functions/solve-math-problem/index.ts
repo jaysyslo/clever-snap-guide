@@ -150,8 +150,42 @@ etc.`;
 
     console.log('AI Response:', solution);
 
+    // Generate topic tags for the problem
+    let tags: string[] = [];
+    try {
+      const tagsResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash-lite',
+          messages: [
+            { 
+              role: 'system', 
+              content: 'You are a math topic classifier. Given a math problem solution, identify 1-3 main mathematical topics/concepts covered. Return ONLY a comma-separated list of short topic names (2-3 words max each). Examples: "Quadratic Equations", "Derivatives", "Trigonometry", "Linear Algebra", "Fractions", "Geometry". Return nothing else.' 
+            },
+            { 
+              role: 'user', 
+              content: `Identify the math topics in this solution:\n\n${solution.substring(0, 1000)}`
+            }
+          ],
+        }),
+      });
+
+      if (tagsResponse.ok) {
+        const tagsData = await tagsResponse.json();
+        const rawTags = tagsData.choices[0].message.content.trim();
+        tags = rawTags.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0 && t.length < 30).slice(0, 3);
+        console.log('Generated tags:', tags);
+      }
+    } catch (tagError) {
+      console.error('Error generating tags:', tagError);
+    }
+
     return new Response(
-      JSON.stringify({ solution, mode }),
+      JSON.stringify({ solution, mode, tags }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

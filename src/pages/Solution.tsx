@@ -118,13 +118,19 @@ const Solution = () => {
 
       setRawSolution(responseBody.solution);
       
+      // Get tags from response
+      const tags = responseBody.tags || [];
+      
       if (mode === 'step_by_step') {
         const parsedSteps = parseSteps(responseBody.solution);
         setSteps(parsedSteps);
         // Save with total steps count for history display
         await supabase
           .from("question_history")
-          .update({ solution_data: { solution: responseBody.solution, totalSteps: parsedSteps.length, completedSteps: 0 } })
+          .update({ 
+            solution_data: { solution: responseBody.solution, totalSteps: parsedSteps.length, completedSteps: 0 },
+            tags: tags
+          })
           .eq("user_id", user?.id)
           .eq("image_url", imageUrl)
           .eq("solution_mode", mode);
@@ -132,7 +138,10 @@ const Solution = () => {
         setSolution(responseBody.solution);
         await supabase
           .from("question_history")
-          .update({ solution_data: { solution: responseBody.solution } })
+          .update({ 
+            solution_data: { solution: responseBody.solution },
+            tags: tags
+          })
           .eq("user_id", user?.id)
           .eq("image_url", imageUrl)
           .eq("solution_mode", mode);
