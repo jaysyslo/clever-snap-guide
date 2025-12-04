@@ -1,30 +1,74 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// ADDED: Import Supabase client
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation schema
+const requestSchema = z.object({
+  imageUrl: z.string().url().max(500),
+  mode: z.enum(['similar', 'step_by_step'])
+});
+
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    const { imageUrl, mode } = await req.json();
-    
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
     }
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_ANON_KEY) {
       throw new Error('Supabase configuration missing');
     }
+
+    // Extract and validate user from JWT token
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await userClient.auth.getUser();
+    
+    if (authError || !user) {
+      console.error('Auth error:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Authenticated user:', user.id);
+
+    // Parse and validate request body
+    const rawBody = await req.json();
+    const parseResult = requestSchema.safeParse(rawBody);
+    
+    if (!parseResult.success) {
+      console.error('Validation error:', parseResult.error.issues);
+      return new Response(
+        JSON.stringify({ error: 'Invalid input', details: parseResult.error.issues }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { imageUrl, mode } = parseResult.data;
 
     // Parse the imageUrl to extract bucket name and file path
     // URL format: https://<project>.supabase.co/storage/v1/object/public/<bucket>/<path>
@@ -36,12 +80,32 @@ serve(async (req) => {
     }
     
     const bucketName = match[1];
-    const filePath = match[2];
+    let filePath = match[2];
+    
+    // Handle signed URLs which may have query parameters
+    if (filePath.includes('?')) {
+      filePath = filePath.split('?')[0];
+    }
+    
+    // Decode URI components in the file path
+    filePath = decodeURIComponent(filePath);
     
     console.log('Bucket:', bucketName, 'Path:', filePath);
     console.log('Mode:', mode);
 
-    // Initialize Supabase Admin client with Service Role Key
+    // Validate image ownership - file path must start with user's ID
+    const expectedPrefix = `${user.id}/`;
+    if (!filePath.startsWith(expectedPrefix)) {
+      console.error('Ownership validation failed. Expected prefix:', expectedPrefix, 'Got path:', filePath);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Cannot access this image' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Image ownership validated for user:', user.id);
+
+    // Initialize Supabase Admin client with Service Role Key for storage access
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Fetch the private file using the Service Role Key
@@ -61,20 +125,20 @@ serve(async (req) => {
     // Convert the Blob to ArrayBuffer
     const imageBuffer = await fileData.arrayBuffer();
 
-    // Correctly convert ArrayBuffer to a Base64 string
-    const uint8Array = new Uint8Array(imageBuffer);
-    // Convert Uint8Array to a binary string before btoa()
-    const binaryString = uint8Array.reduce(
-        (acc, byte) => acc + String.fromCharCode(byte), 
-        ''
-    );
-    const base64Image = btoa(binaryString);
+    // Correctly convert ArrayBuffer to a Base64 string
+    const uint8Array = new Uint8Array(imageBuffer);
+    // Convert Uint8Array to a binary string before btoa()
+    const binaryString = uint8Array.reduce(
+        (acc, byte) => acc + String.fromCharCode(byte), 
+        ''
+    );
+    const base64Image = btoa(binaryString);
 
     // TEMPORARY: Hardcode mimeType since Supabase download doesn't easily return it
     // NOTE: If this causes issues, you must pass the file's mime type from the client.
-    const mimeType = 'image/png'; 
-    const dataUrl = `data:${mimeType};base64,${base64Image}`;
-    console.log('Image converted to base64, size:', base64Image.length);
+    const mimeType = 'image/png'; 
+    const dataUrl = `data:${mimeType};base64,${base64Image}`;
+    console.log('Image converted to base64, size:', base64Image.length);
 
     let systemPrompt = '';
 
@@ -192,8 +256,6 @@ Return ONLY a comma-separated list of tags (2-4 words max each). Be specific abo
       JSON.stringify({ solution, mode, tags }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
-    // ... (omitted code)
 
   } catch (error) {
     console.error('Error:', error instanceof Error ? error.name : 'Unknown', error instanceof Error ? error.message : String(error));

@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+
+// Input validation schema
+const requestSchema = z.object({
+  questionIds: z.array(z.string().uuid()).max(50).optional()
+});
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -48,8 +54,19 @@ serve(async (req) => {
     const userId = user.id;
     console.log('Authenticated user:', userId);
 
-    // Parse request body for optional questionIds
-    const { questionIds } = await req.json().catch(() => ({}));
+    // Parse and validate request body
+    const rawBody = await req.json().catch(() => ({}));
+    const parseResult = requestSchema.safeParse(rawBody);
+    
+    if (!parseResult.success) {
+      console.error('Validation error:', parseResult.error.issues);
+      return new Response(
+        JSON.stringify({ error: 'Invalid input', details: parseResult.error.issues }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { questionIds } = parseResult.data;
 
     // Initialize Supabase client with service role for database operations
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
