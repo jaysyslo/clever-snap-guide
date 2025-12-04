@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { userId } = await req.json();
+    const { userId, questionIds } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -25,10 +25,17 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     // Fetch user's question history including solution_data
-    const { data: questions, error } = await supabase
+    let query = supabase
       .from('question_history')
       .select('problem_text, solution_mode, solution_data, created_at')
-      .eq('user_id', userId)
+      .eq('user_id', userId);
+    
+    // If specific question IDs provided, filter to those
+    if (questionIds && Array.isArray(questionIds) && questionIds.length > 0) {
+      query = query.in('id', questionIds);
+    }
+    
+    const { data: questions, error } = await query
       .order('created_at', { ascending: false })
       .limit(20); // Limit to recent problems to avoid token limits
 
