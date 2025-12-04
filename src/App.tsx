@@ -12,6 +12,7 @@ import Solution from "./pages/Solution";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
 import StudyGuide from "./pages/StudyGuide";
+import SelectProblems from "./pages/SelectProblems";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -77,6 +78,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <StudyGuide />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/select-problems"
+                element={
+                  <ProtectedRoute>
+                    <SelectProblems />
                   </ProtectedRoute>
                 }
               />

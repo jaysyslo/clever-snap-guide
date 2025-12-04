@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ArrowLeft, Trash2, Calendar, Loader2, BookOpen, Pencil, X, Search } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -54,28 +53,6 @@ const History = () => {
   const [newTitle, setNewTitle] = useState("");
   const [tagSearch, setTagSearch] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
-
-  // Selection helpers
-  const toggleQuestion = (id: string) => {
-    setSelectedQuestions(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const selectAll = () => {
-    setSelectedQuestions(new Set(filteredQuestions.map(q => q.id)));
-  };
-
-  const deselectAll = () => {
-    setSelectedQuestions(new Set());
-  };
 
   // Extract all unique tags from questions
   const allTags = useMemo(() => {
@@ -103,10 +80,6 @@ const History = () => {
       q.tags?.some(tag => tag.toLowerCase().includes(searchLower))
     );
   }, [questions, tagSearch]);
-
-  // Selection state derived values (must come after filteredQuestions)
-  const allSelected = filteredQuestions.length > 0 && filteredQuestions.every(q => selectedQuestions.has(q.id));
-  const someSelected = selectedQuestions.size > 0;
 
   const clearSearch = () => {
     setTagSearch("");
@@ -219,37 +192,6 @@ const History = () => {
     setNewTitle(guide.title);
   };
 
-  const handleGenerateStudyGuide = async () => {
-    try {
-      const questionIds = someSelected ? Array.from(selectedQuestions) : undefined;
-      const count = questionIds ? questionIds.length : questions.length;
-      
-      toast({ 
-        title: "Generating study guide...", 
-        description: `Using ${count} problem${count !== 1 ? 's' : ''}. This may take a moment.` 
-      });
-      
-      const { data, error } = await supabase.functions.invoke("generate-study-guide", {
-        body: { userId: user?.id, questionIds },
-      });
-
-      if (error) throw error;
-
-      toast({ title: "Study guide created and saved!" });
-      
-      // Navigate to a study guide view - it's already auto-saved
-      navigate('/study-guide', { 
-        state: { 
-          studyGuide: data.studyGuide, 
-          title: data.title,
-          savedGuideId: data.savedGuideId 
-        } 
-      });
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-surface p-6">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -263,33 +205,12 @@ const History = () => {
         </div>
 
         {questions.length > 0 && (
-          <div className="space-y-2">
-            <Button
-              onClick={handleGenerateStudyGuide}
-              className="w-full bg-gradient-primary hover:opacity-90 transition-smooth rounded-xl"
-            >
-              Generate Study Guide {someSelected && `(${selectedQuestions.size} selected)`}
-            </Button>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
-                {someSelected 
-                  ? `${selectedQuestions.size} problem${selectedQuestions.size !== 1 ? 's' : ''} selected`
-                  : 'All problems will be used'}
-              </span>
-              <div className="flex gap-2">
-                {!allSelected && (
-                  <Button variant="ghost" size="sm" onClick={selectAll} className="h-7 text-xs">
-                    Select All
-                  </Button>
-                )}
-                {someSelected && (
-                  <Button variant="ghost" size="sm" onClick={deselectAll} className="h-7 text-xs">
-                    Deselect All
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
+          <Button
+            onClick={() => navigate("/select-problems")}
+            className="w-full bg-gradient-primary hover:opacity-90 transition-smooth rounded-xl"
+          >
+            Generate Study Guide
+          </Button>
         )}
 
         {/* Tag Search Section */}
@@ -421,41 +342,23 @@ const History = () => {
               const completedSteps = solutionData?.completedSteps || 0;
               const totalSteps = solutionData?.totalSteps || 0;
               const isComplete = totalSteps > 0 && completedSteps >= totalSteps;
-              const isSelected = selectedQuestions.has(question.id);
               
               return (
                 <Card 
                   key={question.id} 
-                  className={`p-4 hover:bg-muted/50 transition-colors ${isSelected ? 'ring-2 ring-primary' : ''}`}
+                  className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => navigate('/solution', { 
+                    state: { 
+                      imageUrl: question.image_url, 
+                      mode: question.solution_mode,
+                      cachedSolution,
+                      completedSteps,
+                      startStep: completedSteps,
+                      viewSummary: question.solution_mode === 'step_by_step' && cachedSolution
+                    } 
+                  })}
                 >
                   <div className="flex gap-4">
-                    <button 
-                      type="button"
-                      className="flex items-center justify-center w-8 h-24 shrink-0"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        toggleQuestion(question.id);
-                      }}
-                    >
-                      <Checkbox 
-                        checked={isSelected}
-                        className="data-[state=checked]:bg-primary pointer-events-none"
-                      />
-                    </button>
-                    <div 
-                      className="flex gap-4 flex-1 cursor-pointer"
-                      onClick={() => navigate('/solution', { 
-                        state: { 
-                          imageUrl: question.image_url, 
-                          mode: question.solution_mode,
-                          cachedSolution,
-                          completedSteps,
-                          startStep: completedSteps,
-                          viewSummary: question.solution_mode === 'step_by_step' && cachedSolution
-                        } 
-                      })}
-                    >
                     {signedUrls[question.id] ? (
                       <img
                         src={signedUrls[question.id]}
@@ -512,7 +415,6 @@ const History = () => {
                           )}
                         </div>
                       )}
-                    </div>
                     </div>
                     <Button
                       variant="ghost"
