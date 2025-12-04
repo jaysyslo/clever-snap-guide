@@ -158,7 +158,6 @@ const StudyGuide = () => {
               body { padding: 0; margin: 20px; }
               h1, h2, h3 { break-after: avoid; }
               .solutions-section { page-break-before: always; }
-              .solution-item { break-inside: avoid; }
             }
           </style>
         </head>
