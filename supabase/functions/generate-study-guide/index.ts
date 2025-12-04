@@ -44,24 +44,40 @@ serve(async (req) => {
     // Prepare context from question history - extract solution content
     const historyContext = questions.map((q, idx) => {
       let content = `Problem ${idx + 1} (Mode: ${q.solution_mode}):`;
+      let solutionText = '';
       
       // Use solution_data if available (contains actual solution text)
-      if (q.solution_data) {
-        const solutionData = q.solution_data as { solution?: string; rawSolution?: string };
-        const solutionText = solutionData.rawSolution || solutionData.solution || '';
-        if (solutionText) {
-          // Truncate very long solutions to save tokens
-          const truncated = solutionText.length > 2000 ? solutionText.substring(0, 2000) + '...' : solutionText;
-          content += `\n${truncated}`;
+      if (q.solution_data && typeof q.solution_data === 'object') {
+        const solutionData = q.solution_data as { solution?: string; rawSolution?: string; status?: string };
+        
+        // Skip entries that are still processing
+        if (solutionData.status === 'processing') {
+          console.log(`Skipping question ${idx + 1} - still processing`);
+          return '';
         }
-      } else if (q.problem_text) {
-        content += `\n${q.problem_text}`;
+        
+        solutionText = solutionData.rawSolution || solutionData.solution || '';
+      }
+      
+      // Fall back to problem_text if no solution content
+      if (!solutionText && q.problem_text) {
+        solutionText = q.problem_text;
+      }
+      
+      if (solutionText) {
+        // Truncate very long solutions to save tokens
+        const truncated = solutionText.length > 2000 ? solutionText.substring(0, 2000) + '...' : solutionText;
+        content += `\n${truncated}`;
+        console.log(`Question ${idx + 1}: extracted ${truncated.length} chars`);
+      } else {
+        console.log(`Question ${idx + 1}: no content found`);
+        return '';
       }
       
       return content;
     }).filter(c => c.length > 50).join('\n\n---\n\n'); // Only include entries with actual content
 
-    console.log(`Found ${questions.length} questions, context length: ${historyContext.length}`);
+    console.log(`Found ${questions.length} questions, usable context length: ${historyContext.length}`);
 
     if (!historyContext || historyContext.length < 100) {
       return new Response(
