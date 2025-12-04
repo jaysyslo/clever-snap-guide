@@ -195,9 +195,14 @@ const StudyGuide = () => {
       `;
       pdfContainer.appendChild(contentWrapper);
 
-      // Temporarily add to DOM (hidden)
-      pdfContainer.style.position = 'absolute';
-      pdfContainer.style.left = '-9999px';
+      // Add to DOM - must be visible for html2canvas to capture
+      pdfContainer.style.position = 'fixed';
+      pdfContainer.style.top = '0';
+      pdfContainer.style.left = '0';
+      pdfContainer.style.zIndex = '-1';
+      pdfContainer.style.opacity = '0.01';
+      pdfContainer.style.pointerEvents = 'none';
+      pdfContainer.style.width = '650px';
       document.body.appendChild(pdfContainer);
 
       const opt = {
