@@ -54,276 +54,111 @@ const StudyGuide = () => {
     
     setExporting(true);
     try {
-      // Parse content to separate main content from solutions
-      const sections = studyGuide.split(/(?=##\s)/);
-      let mainContent = '';
-      let solutionsContent = '';
+      // Create a simple, clean HTML document for PDF
+      const pdfContainer = document.createElement('div');
+      pdfContainer.style.cssText = `
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 14px;
+        line-height: 1.8;
+        color: #000;
+        background: #fff;
+        padding: 40px;
+        width: 700px;
+      `;
+
+      // Process the study guide content
+      let content = studyGuide;
       
-      sections.forEach((section: string) => {
-        if (section.includes('<details>') || section.includes('Show Full Solution')) {
-          const cleanSection = section.replace(/<details[\s\S]*?<\/details>/g, '[See solutions section]');
-          mainContent += cleanSection;
-          
-          const detailsMatches = section.match(/<details[\s\S]*?<\/details>/g);
-          if (detailsMatches) {
-            const sectionTitle = section.match(/##\s*([^\n]+)/)?.[1] || 'Practice Problems';
-            solutionsContent += `\n\n## Solutions: ${sectionTitle}\n\n`;
-            detailsMatches.forEach((detail, idx) => {
-              const solutionContent = detail.replace(/<\/?details>/g, '').replace(/<summary>[\s\S]*?<\/summary>/g, '');
-              solutionsContent += `**Solution ${idx + 1}:**\n${solutionContent}\n\n---\n\n`;
-            });
-          }
-        } else {
-          mainContent += section;
+      // Render LaTeX math using KaTeX
+      content = content.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
+        try {
+          return `<div style="text-align: center; margin: 16px 0;">${katex.renderToString(math.trim(), { displayMode: true, throwOnError: false })}</div>`;
+        } catch {
+          return `<pre>${math}</pre>`;
+        }
+      });
+      
+      content = content.replace(/\$([^\$\n]+?)\$/g, (_, math) => {
+        try {
+          return katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
+        } catch {
+          return `<code>${math}</code>`;
         }
       });
 
-      // Create PDF container with comprehensive styles
-      const pdfContainer = document.createElement('div');
-      pdfContainer.id = 'pdf-export-container';
-      
-      // Comprehensive CSS for proper PDF rendering
-      const styles = `
-        #pdf-export-container {
-          font-family: 'Times New Roman', Times, serif;
-          font-size: 12pt;
-          line-height: 1.6;
-          color: #000;
-          background: #fff;
-          width: 170mm;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        #pdf-export-container * {
-          box-sizing: border-box;
-          max-width: 100%;
-        }
-        #pdf-export-container h1 {
-          font-size: 18pt;
-          font-weight: bold;
-          margin: 24pt 0 12pt 0;
-          padding-bottom: 6pt;
-          border-bottom: 1pt solid #000;
-          page-break-after: avoid;
-        }
-        #pdf-export-container h2 {
-          font-size: 14pt;
-          font-weight: bold;
-          margin: 20pt 0 10pt 0;
-          page-break-after: avoid;
-        }
-        #pdf-export-container h3 {
-          font-size: 12pt;
-          font-weight: bold;
-          margin: 16pt 0 8pt 0;
-          page-break-after: avoid;
-        }
-        #pdf-export-container p {
-          margin: 8pt 0;
-          text-align: justify;
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-        }
-        #pdf-export-container ul, #pdf-export-container ol {
-          margin: 8pt 0 8pt 20pt;
-          padding-left: 10pt;
-        }
-        #pdf-export-container li {
-          margin: 4pt 0;
-          page-break-inside: avoid;
-        }
-        #pdf-export-container hr {
-          border: none;
-          border-top: 0.5pt solid #666;
-          margin: 16pt 0;
-        }
-        #pdf-export-container .katex-display {
-          display: block;
-          margin: 12pt auto;
-          text-align: center;
-          overflow-x: visible;
-          overflow-y: visible;
-          page-break-inside: avoid;
-        }
-        #pdf-export-container .katex {
-          font-size: 1em;
-          white-space: normal;
-        }
-        #pdf-export-container .solution-block {
-          margin: 16pt 0;
-          padding: 12pt;
-          background: #f8f8f8;
-          border-left: 3pt solid #333;
-          page-break-inside: avoid;
-        }
-        #pdf-export-container .page-break {
-          page-break-before: always;
-          padding-top: 0;
-        }
-        #pdf-export-container .section {
-          page-break-inside: avoid;
-        }
+      // Convert markdown to HTML
+      content = content
+        // Headers
+        .replace(/^### (.*$)/gim, '<h3 style="font-size: 16px; font-weight: bold; margin: 20px 0 10px;">$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2 style="font-size: 18px; font-weight: bold; margin: 24px 0 12px;">$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1 style="font-size: 22px; font-weight: bold; margin: 28px 0 14px; border-bottom: 2px solid #333; padding-bottom: 8px;">$1</h1>')
+        // Bold and italic
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        // Lists
+        .replace(/^- (.*$)/gim, '<li style="margin: 6px 0 6px 24px;">$1</li>')
+        .replace(/^\d+\. (.*$)/gim, '<li style="margin: 6px 0 6px 24px;">$1</li>')
+        // Horizontal rules
+        .replace(/^---$/gim, '<hr style="margin: 20px 0; border: none; border-top: 1px solid #ccc;">')
+        // Paragraphs (double newlines)
+        .replace(/\n\n/g, '</p><p style="margin: 12px 0;">')
+        // Single newlines
+        .replace(/\n/g, '<br>')
+        // Details/summary for solutions - expand them for PDF
+        .replace(/<details>/g, '<div style="margin: 16px 0; padding: 12px; background: #f5f5f5; border-left: 3px solid #333;">')
+        .replace(/<\/details>/g, '</div>')
+        .replace(/<summary>(.*?)<\/summary>/g, '<div style="font-weight: bold; margin-bottom: 8px;">$1</div>');
+
+      pdfContainer.innerHTML = `
+        <h1 style="font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px;">
+          Study Guide
+        </h1>
+        <div style="margin: 0;">
+          <p style="margin: 12px 0;">${content}</p>
+        </div>
       `;
 
-      const styleTag = document.createElement('style');
-      styleTag.textContent = styles;
-      pdfContainer.appendChild(styleTag);
+      // Add KaTeX CSS inline
+      const katexCSS = document.createElement('style');
+      katexCSS.textContent = '.katex { font-size: 1.1em; }';
+      pdfContainer.prepend(katexCSS);
 
-      // Add KaTeX CSS
-      const katexStyleTag = document.createElement('style');
-      katexStyleTag.textContent = `
-        .katex { font-size: 1.1em; }
-        .katex-display { margin: 1em 0; }
-        .katex-display > .katex { display: inline-block; text-align: center; }
-      `;
-      pdfContainer.appendChild(katexStyleTag);
-
-      // Build content
-      const mainHTML = await renderMarkdownToHTML(mainContent);
-      const solutionsHTML = solutionsContent ? await renderMarkdownToHTML(solutionsContent) : '';
-
-      const contentWrapper = document.createElement('div');
-      contentWrapper.innerHTML = `
-        <h1 style="margin-top: 0;">Study Guide</h1>
-        <div class="main-content">${mainHTML}</div>
-        ${solutionsHTML ? `
-          <div class="page-break">
-            <h1 style="margin-top: 0;">Full Solutions</h1>
-            <div class="solutions-content">${solutionsHTML}</div>
-          </div>
-        ` : ''}
-      `;
-      pdfContainer.appendChild(contentWrapper);
-
-      // Add to DOM - must be visible for html2canvas to capture
+      // Position container so html2canvas can capture it
       pdfContainer.style.position = 'fixed';
       pdfContainer.style.top = '0';
       pdfContainer.style.left = '0';
-      pdfContainer.style.zIndex = '-1';
-      pdfContainer.style.opacity = '0.01';
-      pdfContainer.style.pointerEvents = 'none';
-      pdfContainer.style.width = '650px';
+      pdfContainer.style.zIndex = '9999';
+      pdfContainer.style.background = 'white';
       document.body.appendChild(pdfContainer);
 
+      // Small delay to ensure rendering
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const opt = {
-        margin: [15, 15, 20, 15] as [number, number, number, number],
+        margin: 10,
         filename: `study-guide-${new Date().toISOString().split('T')[0]}.pdf`,
         image: { type: 'jpeg' as const, quality: 0.98 },
         html2canvas: { 
-          scale: 2, 
-          useCORS: true, 
+          scale: 2,
+          useCORS: true,
           backgroundColor: '#ffffff',
-          logging: false,
-          width: 650,
-          windowWidth: 650
+          scrollY: 0,
+          scrollX: 0
         },
-        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'], before: '.page-break', avoid: ['h1', 'h2', 'h3', 'li', '.solution-block', '.katex-display'] }
+        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
       };
       
       await html2pdf().set(opt).from(pdfContainer).save();
       document.body.removeChild(pdfContainer);
       toast({ title: "PDF exported successfully!" });
     } catch (error: any) {
+      console.error('PDF export error:', error);
       toast({ title: "Export failed", description: error.message, variant: "destructive" });
     } finally {
       setExporting(false);
     }
   };
 
-  const renderMarkdownToHTML = async (markdown: string): Promise<string> => {
-    let html = markdown;
-    
-    // Render display math ($$...$$) - must come first
-    html = html.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
-      try {
-        const rendered = katex.renderToString(math.trim(), { 
-          displayMode: true, 
-          throwOnError: false,
-          output: 'html'
-        });
-        return `<div class="katex-display">${rendered}</div>`;
-      } catch {
-        return `<code>${math}</code>`;
-      }
-    });
-    
-    // Render inline math ($...$)
-    html = html.replace(/\$([^\$\n]+?)\$/g, (_, math) => {
-      try {
-        return katex.renderToString(math.trim(), { 
-          displayMode: false, 
-          throwOnError: false,
-          output: 'html'
-        });
-      } catch {
-        return `<code>${math}</code>`;
-      }
-    });
-    
-    // Process line by line for better structure
-    const lines = html.split('\n');
-    let result = '';
-    let inList = false;
-    let listType = '';
-    
-    for (const line of lines) {
-      const trimmed = line.trim();
-      
-      if (trimmed.startsWith('### ')) {
-        if (inList) { result += `</${listType}>`; inList = false; }
-        result += `<h3>${trimmed.slice(4)}</h3>`;
-      } else if (trimmed.startsWith('## ')) {
-        if (inList) { result += `</${listType}>`; inList = false; }
-        result += `<h2>${trimmed.slice(3)}</h2>`;
-      } else if (trimmed.startsWith('# ')) {
-        if (inList) { result += `</${listType}>`; inList = false; }
-        result += `<h1>${trimmed.slice(2)}</h1>`;
-      } else if (trimmed.startsWith('- ')) {
-        if (!inList || listType !== 'ul') {
-          if (inList) result += `</${listType}>`;
-          result += '<ul>';
-          inList = true;
-          listType = 'ul';
-        }
-        result += `<li>${processInlineFormatting(trimmed.slice(2))}</li>`;
-      } else if (/^\d+\.\s/.test(trimmed)) {
-        if (!inList || listType !== 'ol') {
-          if (inList) result += `</${listType}>`;
-          result += '<ol>';
-          inList = true;
-          listType = 'ol';
-        }
-        result += `<li>${processInlineFormatting(trimmed.replace(/^\d+\.\s/, ''))}</li>`;
-      } else if (trimmed === '---') {
-        if (inList) { result += `</${listType}>`; inList = false; }
-        result += '<hr>';
-      } else if (trimmed === '') {
-        if (inList) { result += `</${listType}>`; inList = false; }
-      } else if (trimmed.startsWith('<')) {
-        // Already HTML (KaTeX output)
-        if (inList) { result += `</${listType}>`; inList = false; }
-        result += trimmed;
-      } else {
-        if (inList) { result += `</${listType}>`; inList = false; }
-        result += `<p>${processInlineFormatting(trimmed)}</p>`;
-      }
-    }
-    
-    if (inList) result += `</${listType}>`;
-    
-    // Clean up references to solutions section
-    result = result.replace(/\[See solutions section\]/g, '<em>[See solutions section at end of document]</em>');
-    
-    return result;
-  };
-
-  const processInlineFormatting = (text: string): string => {
-    return text
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>');
-  };
 
   if (!studyGuide) {
     return (
