@@ -17,7 +17,7 @@ const StudyGuide = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { studyGuide, savedGuideId } = location.state || {};
+  const { studyGuide, savedGuideId, title: initialTitle } = location.state || {};
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(!!savedGuideId);
   const [exporting, setExporting] = useState(false);
@@ -28,7 +28,7 @@ const StudyGuide = () => {
     
     setSaving(true);
     try {
-      const title = `Study Guide - ${new Date().toLocaleDateString()}`;
+      const title = initialTitle || `Study Guide - ${new Date().toLocaleDateString()}`;
       const { error } = await supabase
         .from("study_guides")
         .insert({
