@@ -95,7 +95,7 @@ const Home = () => {
               <Calculator className="w-6 h-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">MathSolver</h1>
+              <h1 className="text-2xl font-bold">Foundx</h1>
               <p className="text-sm text-muted-foreground">{user?.email}</p>
             </div>
           </div>

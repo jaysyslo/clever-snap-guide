@@ -96,7 +96,7 @@ const Auth = () => {
             <Calculator className="w-8 h-8 text-primary-foreground" />
           </div>
           <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            MathSolver
+            Foundx
           </h1>
           <p className="text-muted-foreground mt-2">
             {isReset ? "Reset your password" : isLogin ? "Welcome back!" : "Create your account"}
