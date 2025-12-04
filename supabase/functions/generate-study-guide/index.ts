@@ -91,7 +91,8 @@ serve(async (req) => {
 Your response MUST be formatted with clear headings for:
 1. **Summary of Topics Covered** - Brief overview of the mathematical topics the student has been working on
 2. **Key Concepts to Review** - Important formulas, theorems, and concepts the student should master
-3. **Practice Problems** - For EACH practice problem, you MUST include:
+3. **Study Recommendations** - Specific advice for improvement
+4. **Practice Problems** - For EACH practice problem, you MUST include:
    - The problem statement
    - **Final Answer:** The correct answer clearly stated
    - <details><summary>Show Full Solution</summary>
@@ -99,7 +100,6 @@ Your response MUST be formatted with clear headings for:
    [Complete step-by-step solution with all work shown]
    
    </details>
-4. **Study Recommendations** - Specific advice for improvement
 
 IMPORTANT: Each practice problem must have both the final answer displayed prominently AND a collapsible section containing the full step-by-step solution. Use the HTML <details> and <summary> tags exactly as shown above for the collapsible solutions.`;
 
