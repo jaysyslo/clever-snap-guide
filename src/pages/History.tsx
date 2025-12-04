@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Trash2, Calendar, Loader2, BookOpen, Pencil, X, Filter } from "lucide-react";
+import { ArrowLeft, Trash2, Calendar, Loader2, BookOpen, Pencil, X, Search } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -51,34 +51,18 @@ const History = () => {
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [editingGuide, setEditingGuide] = useState<StudyGuide | null>(null);
   const [newTitle, setNewTitle] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagSearch, setTagSearch] = useState("");
 
-  // Extract all unique tags from questions
-  const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    questions.forEach(q => {
-      q.tags?.forEach(tag => tagSet.add(tag));
-    });
-    return Array.from(tagSet).sort();
-  }, [questions]);
-
-  // Filter questions based on selected tags
+  // Filter questions based on tag search
   const filteredQuestions = useMemo(() => {
-    if (selectedTags.length === 0) return questions;
+    if (!tagSearch.trim()) return questions;
+    const searchLower = tagSearch.toLowerCase();
     return questions.filter(q => 
-      selectedTags.some(tag => q.tags?.includes(tag))
+      q.tags?.some(tag => tag.toLowerCase().includes(searchLower))
     );
-  }, [questions, selectedTags]);
+  }, [questions, tagSearch]);
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tag) 
-        ? prev.filter(t => t !== tag)
-        : [...prev, tag]
-    );
-  };
-
-  const clearFilters = () => setSelectedTags([]);
+  const clearSearch = () => setTagSearch("");
 
   useEffect(() => {
     loadHistory();
@@ -227,36 +211,26 @@ const History = () => {
           </Button>
         )}
 
-        {/* Tag Filter Section */}
-        {allTags.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Filter className="w-4 h-4" />
-                <span>Filter by topic</span>
-              </div>
-              {selectedTags.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 text-xs">
-                  Clear filters
-                  <X className="w-3 h-3 ml-1" />
-                </Button>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {allTags.map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => toggleTag(tag)}
-                  className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-                    selectedTags.includes(tag)
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
+        {/* Tag Search Section */}
+        {questions.length > 0 && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by topic..."
+              value={tagSearch}
+              onChange={(e) => setTagSearch(e.target.value)}
+              className="pl-9 pr-9"
+            />
+            {tagSearch && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearSearch}
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         )}
 
@@ -318,7 +292,7 @@ const History = () => {
           {studyGuides.length > 0 && questions.length > 0 && (
             <h2 className="text-lg font-semibold text-muted-foreground">
               Problem History
-              {selectedTags.length > 0 && (
+              {tagSearch && (
                 <span className="text-sm font-normal ml-2">
                   ({filteredQuestions.length} of {questions.length})
                 </span>
@@ -333,9 +307,9 @@ const History = () => {
             </Card>
           ) : filteredQuestions.length === 0 ? (
             <Card className="p-8 text-center">
-              <p className="text-muted-foreground">No problems match the selected filters.</p>
-              <Button variant="link" onClick={clearFilters} className="mt-2">
-                Clear filters
+              <p className="text-muted-foreground">No problems match "{tagSearch}"</p>
+              <Button variant="link" onClick={clearSearch} className="mt-2">
+                Clear search
               </Button>
             </Card>
           ) : (
