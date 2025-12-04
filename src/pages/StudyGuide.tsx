@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,7 +11,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import html2pdf from "html2pdf.js";
-import katex from "katex";
 import "katex/dist/katex.min.css";
 
 const StudyGuide = () => {
@@ -23,6 +22,7 @@ const StudyGuide = () => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(!!savedGuideId);
   const [exporting, setExporting] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const handleSave = async () => {
     if (!user || !studyGuide) return;
@@ -50,109 +50,92 @@ const StudyGuide = () => {
   };
 
   const handleExportPDF = async () => {
-    if (!studyGuide) return;
+    if (!contentRef.current) return;
     
     setExporting(true);
     try {
-      // Create a simple, clean HTML document for PDF
-      const pdfContainer = document.createElement('div');
-      pdfContainer.style.cssText = `
+      // Create an overlay to hide the flash
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: white;
+        z-index: 99998;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: system-ui;
+        font-size: 18px;
+        color: #666;
+      `;
+      overlay.textContent = 'Generating PDF...';
+      document.body.appendChild(overlay);
+
+      // Clone the rendered content
+      const clone = contentRef.current.cloneNode(true) as HTMLElement;
+      
+      // Create wrapper with print-friendly styles
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 800px;
+        background: white;
+        color: black;
         font-family: 'Times New Roman', Times, serif;
-        font-size: 14px;
-        line-height: 1.8;
-        color: #000;
-        background: #fff;
         padding: 40px;
-        width: 700px;
+        z-index: 99999;
       `;
-
-      // Process the study guide content
-      let content = studyGuide;
       
-      // Render LaTeX math using KaTeX
-      content = content.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
-        try {
-          return `<div style="text-align: center; margin: 16px 0;">${katex.renderToString(math.trim(), { displayMode: true, throwOnError: false })}</div>`;
-        } catch {
-          return `<pre>${math}</pre>`;
+      // Style the cloned content for PDF
+      clone.style.cssText = 'color: black !important; background: white !important;';
+      
+      // Override all text colors to black for PDF
+      clone.querySelectorAll('*').forEach((el) => {
+        const htmlEl = el as HTMLElement;
+        htmlEl.style.color = 'black';
+        if (htmlEl.style.backgroundColor) {
+          htmlEl.style.backgroundColor = htmlEl.classList.contains('bg-muted') ? '#f5f5f5' : 'transparent';
         }
       });
       
-      content = content.replace(/\$([^\$\n]+?)\$/g, (_, math) => {
-        try {
-          return katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
-        } catch {
-          return `<code>${math}</code>`;
-        }
+      // Expand all details elements for PDF
+      clone.querySelectorAll('details').forEach((details) => {
+        details.setAttribute('open', 'true');
       });
+      
+      wrapper.appendChild(clone);
+      document.body.appendChild(wrapper);
 
-      // Convert markdown to HTML
-      content = content
-        // Headers
-        .replace(/^### (.*$)/gim, '<h3 style="font-size: 16px; font-weight: bold; margin: 20px 0 10px;">$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2 style="font-size: 18px; font-weight: bold; margin: 24px 0 12px;">$1</h2>')
-        .replace(/^# (.*$)/gim, '<h1 style="font-size: 22px; font-weight: bold; margin: 28px 0 14px; border-bottom: 2px solid #333; padding-bottom: 8px;">$1</h1>')
-        // Bold and italic
-        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-        // Lists
-        .replace(/^- (.*$)/gim, '<li style="margin: 6px 0 6px 24px;">$1</li>')
-        .replace(/^\d+\. (.*$)/gim, '<li style="margin: 6px 0 6px 24px;">$1</li>')
-        // Horizontal rules
-        .replace(/^---$/gim, '<hr style="margin: 20px 0; border: none; border-top: 1px solid #ccc;">')
-        // Paragraphs (double newlines)
-        .replace(/\n\n/g, '</p><p style="margin: 12px 0;">')
-        // Single newlines
-        .replace(/\n/g, '<br>')
-        // Details/summary for solutions - expand them for PDF
-        .replace(/<details>/g, '<div style="margin: 16px 0; padding: 12px; background: #f5f5f5; border-left: 3px solid #333;">')
-        .replace(/<\/details>/g, '</div>')
-        .replace(/<summary>(.*?)<\/summary>/g, '<div style="font-weight: bold; margin-bottom: 8px;">$1</div>');
-
-      pdfContainer.innerHTML = `
-        <h1 style="font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px;">
-          Study Guide
-        </h1>
-        <div style="margin: 0;">
-          <p style="margin: 12px 0;">${content}</p>
-        </div>
-      `;
-
-      // Add KaTeX CSS inline
-      const katexCSS = document.createElement('style');
-      katexCSS.textContent = '.katex { font-size: 1.1em; }';
-      pdfContainer.prepend(katexCSS);
-
-      // Position container so html2canvas can capture it
-      pdfContainer.style.position = 'fixed';
-      pdfContainer.style.top = '0';
-      pdfContainer.style.left = '0';
-      pdfContainer.style.zIndex = '9999';
-      pdfContainer.style.background = 'white';
-      document.body.appendChild(pdfContainer);
-
-      // Small delay to ensure rendering
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait for rendering
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       const opt = {
-        margin: 10,
+        margin: [10, 10, 10, 10] as [number, number, number, number],
         filename: `study-guide-${new Date().toISOString().split('T')[0]}.pdf`,
         image: { type: 'jpeg' as const, quality: 0.98 },
         html2canvas: { 
           scale: 2,
           useCORS: true,
           backgroundColor: '#ffffff',
-          scrollY: 0,
-          scrollX: 0
+          logging: false
         },
         jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
       };
       
-      await html2pdf().set(opt).from(pdfContainer).save();
-      document.body.removeChild(pdfContainer);
+      await html2pdf().set(opt).from(wrapper).save();
+      
+      document.body.removeChild(wrapper);
+      document.body.removeChild(overlay);
       toast({ title: "PDF exported successfully!" });
     } catch (error: any) {
       console.error('PDF export error:', error);
+      // Clean up on error
+      document.querySelectorAll('[style*="z-index: 99999"], [style*="z-index: 99998"]').forEach(el => el.remove());
       toast({ title: "Export failed", description: error.message, variant: "destructive" });
     } finally {
       setExporting(false);
@@ -215,7 +198,7 @@ const StudyGuide = () => {
           </div>
         </div>
 
-        <Card className="p-8 space-y-6">
+        <Card ref={contentRef} className="p-8 space-y-6">
           <h1 className="text-2xl font-bold">Your Personalized Study Guide</h1>
           <div className="prose prose-base max-w-none dark:prose-invert prose-headings:mt-8 prose-headings:mb-4 prose-p:my-4 prose-p:leading-relaxed prose-li:my-2 prose-ul:my-4 prose-ol:my-4 prose-hr:my-8">
             <div className="space-y-6">
