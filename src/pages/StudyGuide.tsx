@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
 import "katex/dist/katex.min.css";
 
 const StudyGuide = () => {
@@ -42,7 +43,7 @@ const StudyGuide = () => {
             <div className="bg-accent/30 p-6 rounded-lg">
               <ReactMarkdown 
                 remarkPlugins={[remarkMath]} 
-                rehypePlugins={[rehypeKatex]}
+                rehypePlugins={[rehypeRaw, rehypeKatex]}
                 components={{
                   details: ({ children, ...props }) => (
                     <details {...props} className="my-4 rounded-lg bg-muted/50 p-4 border border-border">
