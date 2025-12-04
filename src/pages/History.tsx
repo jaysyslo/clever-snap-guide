@@ -162,8 +162,16 @@ const History = () => {
 
       if (error) throw error;
 
-      // Navigate to a study guide view with the generated title
-      navigate('/study-guide', { state: { studyGuide: data.studyGuide, title: data.title } });
+      toast({ title: "Study guide created and saved!" });
+      
+      // Navigate to a study guide view - it's already auto-saved
+      navigate('/study-guide', { 
+        state: { 
+          studyGuide: data.studyGuide, 
+          title: data.title,
+          savedGuideId: data.savedGuideId 
+        } 
+      });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
