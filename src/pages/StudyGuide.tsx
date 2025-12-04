@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Save, Check } from "lucide-react";
+import { ArrowLeft, Save, Check, Download } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -10,6 +10,7 @@ import rehypeRaw from "rehype-raw";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import html2pdf from "html2pdf.js";
 import "katex/dist/katex.min.css";
 
 const StudyGuide = () => {
@@ -20,6 +21,8 @@ const StudyGuide = () => {
   const { studyGuide, savedGuideId } = location.state || {};
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(!!savedGuideId);
+  const [exporting, setExporting] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const handleSave = async () => {
     if (!user || !studyGuide) return;
@@ -43,6 +46,29 @@ const StudyGuide = () => {
       toast({ title: "Error saving", description: error.message, variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!contentRef.current) return;
+    
+    setExporting(true);
+    try {
+      const element = contentRef.current;
+      const opt = {
+        margin: [10, 10, 10, 10] as [number, number, number, number],
+        filename: `study-guide-${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+      };
+      
+      await html2pdf().set(opt).from(element).save();
+      toast({ title: "PDF exported successfully!" });
+    } catch (error: any) {
+      toast({ title: "Export failed", description: error.message, variant: "destructive" });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -70,28 +96,38 @@ const StudyGuide = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to History
           </Button>
-          {!savedGuideId && (
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              onClick={handleSave}
-              disabled={saving || saved}
+              onClick={handleExportPDF}
+              disabled={exporting}
             >
-              {saved ? (
-                <>
-                  <Check className="w-4 h-4 mr-2" />
-                  Saved
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  {saving ? "Saving..." : "Save Guide"}
-                </>
-              )}
+              <Download className="w-4 h-4 mr-2" />
+              {exporting ? "Exporting..." : "Export PDF"}
             </Button>
-          )}
+            {!savedGuideId && (
+              <Button
+                variant="outline"
+                onClick={handleSave}
+                disabled={saving || saved}
+              >
+                {saved ? (
+                  <>
+                    <Check className="w-4 h-4 mr-2" />
+                    Saved
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    {saving ? "Saving..." : "Save Guide"}
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
 
-        <Card className="p-8 space-y-6">
+        <Card className="p-8 space-y-6" ref={contentRef}>
           <h1 className="text-2xl font-bold">Your Personalized Study Guide</h1>
           <div className="prose prose-base max-w-none dark:prose-invert prose-headings:mt-8 prose-headings:mb-4 prose-p:my-4 prose-p:leading-relaxed prose-li:my-2 prose-ul:my-4 prose-ol:my-4 prose-hr:my-8">
             <div className="space-y-6">
