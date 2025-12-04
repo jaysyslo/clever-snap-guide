@@ -10,7 +10,6 @@ import rehypeRaw from "rehype-raw";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import html2pdf from "html2pdf.js";
 import "katex/dist/katex.min.css";
 
 const StudyGuide = () => {
@@ -49,99 +48,209 @@ const StudyGuide = () => {
     }
   };
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     if (!contentRef.current) return;
     
     setExporting(true);
+    
     try {
-      // Create an overlay to hide the flash
-      const overlay = document.createElement('div');
-      overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: white;
-        z-index: 99998;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: system-ui;
-        font-size: 18px;
-        color: #666;
-      `;
-      overlay.textContent = 'Generating PDF...';
-      document.body.appendChild(overlay);
+      // Get the HTML content
+      const content = contentRef.current.innerHTML;
+      
+      // Get KaTeX CSS
+      const katexCSS = Array.from(document.styleSheets)
+        .filter(sheet => {
+          try {
+            return sheet.href?.includes('katex') || 
+                   Array.from(sheet.cssRules || []).some(rule => 
+                     rule.cssText?.includes('.katex')
+                   );
+          } catch {
+            return false;
+          }
+        })
+        .map(sheet => {
+          try {
+            return Array.from(sheet.cssRules || []).map(rule => rule.cssText).join('\n');
+          } catch {
+            return '';
+          }
+        })
+        .join('\n');
 
-      // Clone the rendered content
-      const clone = contentRef.current.cloneNode(true) as HTMLElement;
+      // Create print window
+      const printWindow = window.open('', '_blank', 'width=800,height=600');
+      if (!printWindow) {
+        toast({ title: "Please allow popups to export PDF", variant: "destructive" });
+        setExporting(false);
+        return;
+      }
+
+      // Write the document
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Study Guide - ${new Date().toLocaleDateString()}</title>
+          <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+          <style>
+            ${katexCSS}
+            
+            * {
+              box-sizing: border-box;
+            }
+            
+            body {
+              font-family: 'Times New Roman', Times, Georgia, serif;
+              font-size: 12pt;
+              line-height: 1.6;
+              color: #000;
+              background: #fff;
+              margin: 0;
+              padding: 40px;
+              max-width: 800px;
+              margin: 0 auto;
+            }
+            
+            h1 {
+              font-size: 20pt;
+              font-weight: bold;
+              margin: 24pt 0 12pt 0;
+              padding-bottom: 8pt;
+              border-bottom: 2px solid #333;
+            }
+            
+            h2 {
+              font-size: 16pt;
+              font-weight: bold;
+              margin: 20pt 0 10pt 0;
+              color: #333;
+            }
+            
+            h3 {
+              font-size: 14pt;
+              font-weight: bold;
+              margin: 16pt 0 8pt 0;
+            }
+            
+            p {
+              margin: 10pt 0;
+              text-align: justify;
+            }
+            
+            ul, ol {
+              margin: 10pt 0 10pt 20pt;
+              padding-left: 15pt;
+            }
+            
+            li {
+              margin: 6pt 0;
+            }
+            
+            hr {
+              border: none;
+              border-top: 1px solid #ccc;
+              margin: 20pt 0;
+            }
+            
+            details {
+              margin: 16pt 0;
+              padding: 12pt;
+              background: #f9f9f9;
+              border-left: 3px solid #333;
+            }
+            
+            details[open] summary {
+              margin-bottom: 10pt;
+            }
+            
+            summary {
+              font-weight: bold;
+              cursor: pointer;
+            }
+            
+            .katex {
+              font-size: 1.1em;
+            }
+            
+            .katex-display {
+              margin: 16pt 0;
+              text-align: center;
+            }
+            
+            code {
+              background: #f4f4f4;
+              padding: 2px 6px;
+              border-radius: 3px;
+              font-family: 'Courier New', monospace;
+            }
+            
+            strong {
+              font-weight: bold;
+            }
+            
+            em {
+              font-style: italic;
+            }
+            
+            /* Print-specific styles */
+            @media print {
+              body {
+                padding: 0;
+                margin: 20px;
+              }
+              
+              details {
+                break-inside: avoid;
+              }
+              
+              h1, h2, h3 {
+                break-after: avoid;
+              }
+              
+              /* Expand all details for printing */
+              details {
+                display: block !important;
+              }
+              
+              details > summary {
+                display: block !important;
+              }
+              
+              details > *:not(summary) {
+                display: block !important;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${content}
+          <script>
+            // Expand all details elements
+            document.querySelectorAll('details').forEach(d => d.setAttribute('open', 'true'));
+            
+            // Wait for KaTeX to render, then print
+            setTimeout(() => {
+              window.print();
+            }, 500);
+          </script>
+        </body>
+        </html>
+      `);
       
-      // Create wrapper with print-friendly styles
-      const wrapper = document.createElement('div');
-      wrapper.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 800px;
-        background: white;
-        color: black;
-        font-family: 'Times New Roman', Times, serif;
-        padding: 40px;
-        z-index: 99999;
-      `;
+      printWindow.document.close();
       
-      // Style the cloned content for PDF
-      clone.style.cssText = 'color: black !important; background: white !important;';
-      
-      // Override all text colors to black for PDF
-      clone.querySelectorAll('*').forEach((el) => {
-        const htmlEl = el as HTMLElement;
-        htmlEl.style.color = 'black';
-        if (htmlEl.style.backgroundColor) {
-          htmlEl.style.backgroundColor = htmlEl.classList.contains('bg-muted') ? '#f5f5f5' : 'transparent';
-        }
+      toast({ 
+        title: "Print dialog opened", 
+        description: "Select 'Save as PDF' to download your study guide" 
       });
-      
-      // Expand all details elements for PDF
-      clone.querySelectorAll('details').forEach((details) => {
-        details.setAttribute('open', 'true');
-      });
-      
-      wrapper.appendChild(clone);
-      document.body.appendChild(wrapper);
-
-      // Wait for rendering
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      const opt = {
-        margin: [10, 10, 10, 10] as [number, number, number, number],
-        filename: `study-guide-${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { 
-          scale: 2,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          logging: false
-        },
-        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
-      };
-      
-      await html2pdf().set(opt).from(wrapper).save();
-      
-      document.body.removeChild(wrapper);
-      document.body.removeChild(overlay);
-      toast({ title: "PDF exported successfully!" });
     } catch (error: any) {
       console.error('PDF export error:', error);
-      // Clean up on error
-      document.querySelectorAll('[style*="z-index: 99999"], [style*="z-index: 99998"]').forEach(el => el.remove());
       toast({ title: "Export failed", description: error.message, variant: "destructive" });
     } finally {
       setExporting(false);
     }
   };
-
 
   if (!studyGuide) {
     return (
