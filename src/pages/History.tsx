@@ -16,6 +16,7 @@ interface Question {
   solution_mode: string;
   created_at: string;
   solution_data: { solution: string; completedSteps?: number; totalSteps?: number } | null | unknown;
+  tags: string[] | null;
 }
 
 interface StudyGuide {
@@ -305,6 +306,18 @@ const History = () => {
                       <p className="text-sm">
                         Mode: <span className="font-semibold capitalize">{question.solution_mode.replace("_", " ")}</span>
                       </p>
+                      {question.tags && question.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {question.tags.map((tag, idx) => (
+                            <span 
+                              key={idx}
+                              className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       {question.solution_mode === 'step_by_step' && cachedSolution && (
                         <div className="space-y-1">
                           <p className="text-xs text-muted-foreground">
