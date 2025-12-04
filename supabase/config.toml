@@ -1,10 +1,10 @@
 project_id = "fyjalxxgmcrknknwlxfz"
 
 [functions.solve-math-problem]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-study-guide]
-verify_jwt = false
+verify_jwt = true
 
 [functions.validate-answer]
-verify_jwt = false
+verify_jwt = true

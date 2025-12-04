@@ -152,7 +152,7 @@ const SelectProblems = () => {
       });
       
       const { data, error } = await supabase.functions.invoke("generate-study-guide", {
-        body: { userId: user?.id, questionIds },
+        body: { questionIds },
       });
 
       if (error) throw error;
