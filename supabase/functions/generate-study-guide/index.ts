@@ -115,6 +115,7 @@ CRITICAL FORMATTING RULES:
 - Ensure all LaTeX expressions have spaces around them (e.g., "equals $x^2$ which" not "equals$x^2$which")
 - Each step should be on its own paragraph with a blank line before and after`;
 
+    // Generate study guide content
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -144,8 +145,40 @@ CRITICAL FORMATTING RULES:
 
     console.log('Study guide generated successfully');
 
+    // Generate a descriptive title based on the content
+    const titleResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-lite',
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are a title generator. Generate a short, descriptive title (max 50 characters) for the study guide based on its content. Focus on the main math topics covered. Return ONLY the title, nothing else.' 
+          },
+          { 
+            role: 'user', 
+            content: `Generate a title for this study guide:\n\n${studyGuide.substring(0, 1500)}`
+          }
+        ],
+      }),
+    });
+
+    let generatedTitle = `Study Guide - ${new Date().toLocaleDateString()}`;
+    
+    if (titleResponse.ok) {
+      const titleData = await titleResponse.json();
+      const rawTitle = titleData.choices[0].message.content.trim();
+      // Clean up the title - remove quotes and limit length
+      generatedTitle = rawTitle.replace(/^["']|["']$/g, '').substring(0, 60);
+      console.log('Generated title:', generatedTitle);
+    }
+
     return new Response(
-      JSON.stringify({ studyGuide }),
+      JSON.stringify({ studyGuide, title: generatedTitle }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

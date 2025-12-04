@@ -162,8 +162,8 @@ const History = () => {
 
       if (error) throw error;
 
-      // Navigate to a study guide view or show in modal
-      navigate('/study-guide', { state: { studyGuide: data.studyGuide } });
+      // Navigate to a study guide view with the generated title
+      navigate('/study-guide', { state: { studyGuide: data.studyGuide, title: data.title } });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
