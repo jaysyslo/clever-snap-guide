@@ -426,32 +426,36 @@ const History = () => {
               return (
                 <Card 
                   key={question.id} 
-                  className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${isSelected ? 'ring-2 ring-primary' : ''}`}
-                  onClick={() => navigate('/solution', { 
-                    state: { 
-                      imageUrl: question.image_url, 
-                      mode: question.solution_mode,
-                      cachedSolution,
-                      completedSteps,
-                      startStep: completedSteps,
-                      viewSummary: question.solution_mode === 'step_by_step' && cachedSolution
-                    } 
-                  })}
+                  className={`p-4 hover:bg-muted/50 transition-colors ${isSelected ? 'ring-2 ring-primary' : ''}`}
                 >
                   <div className="flex gap-4">
-                    <div 
-                      className="flex items-center"
+                    <button 
+                      type="button"
+                      className="flex items-center justify-center w-8 h-24 shrink-0"
                       onClick={(e) => {
+                        e.preventDefault();
                         e.stopPropagation();
                         toggleQuestion(question.id);
                       }}
                     >
                       <Checkbox 
                         checked={isSelected}
-                        onCheckedChange={() => toggleQuestion(question.id)}
-                        className="data-[state=checked]:bg-primary"
+                        className="data-[state=checked]:bg-primary pointer-events-none"
                       />
-                    </div>
+                    </button>
+                    <div 
+                      className="flex gap-4 flex-1 cursor-pointer"
+                      onClick={() => navigate('/solution', { 
+                        state: { 
+                          imageUrl: question.image_url, 
+                          mode: question.solution_mode,
+                          cachedSolution,
+                          completedSteps,
+                          startStep: completedSteps,
+                          viewSummary: question.solution_mode === 'step_by_step' && cachedSolution
+                        } 
+                      })}
+                    >
                     {signedUrls[question.id] ? (
                       <img
                         src={signedUrls[question.id]}
@@ -508,6 +512,7 @@ const History = () => {
                           )}
                         </div>
                       )}
+                    </div>
                     </div>
                     <Button
                       variant="ghost"
