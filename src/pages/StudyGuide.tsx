@@ -43,7 +43,7 @@ const StudyGuide = () => {
             <div className="space-y-6">
               <ReactMarkdown 
                 remarkPlugins={[remarkMath]} 
-                rehypePlugins={[rehypeRaw, rehypeKatex]}
+                rehypePlugins={[rehypeKatex, rehypeRaw]}
                 components={{
                   h1: ({ children, ...props }) => (
                     <h1 {...props} className="text-2xl font-bold mt-8 mb-4 pb-2 border-b border-border">{children}</h1>

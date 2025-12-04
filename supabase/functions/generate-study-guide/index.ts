@@ -86,7 +86,7 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert math tutor creating a highly personalized study guide. Analyze the provided math solutions from the student's history. Identify the mathematical concepts involved, patterns in the types of problems solved, and areas that could benefit from more practice. Use LaTeX notation (e.g., $x^2$) for any mathematical expressions.
+    const systemPrompt = `You are an expert math tutor creating a highly personalized study guide. Analyze the provided math solutions from the student's history. Identify the mathematical concepts involved, patterns in the types of problems solved, and areas that could benefit from more practice. Use LaTeX notation (e.g., $x^2$ for inline math) for any mathematical expressions.
 
 Your response MUST be formatted with clear headings for:
 1. **Summary of Topics Covered** - Brief overview of the mathematical topics the student has been working on
@@ -95,13 +95,25 @@ Your response MUST be formatted with clear headings for:
 4. **Practice Problems** - For EACH practice problem, you MUST include:
    - The problem statement
    - **Final Answer:** The correct answer clearly stated
-   - <details><summary>Show Full Solution</summary>
-   
-   [Complete step-by-step solution with all work shown]
-   
-   </details>
+   - A collapsible solution section using this EXACT format:
 
-IMPORTANT: Each practice problem must have both the final answer displayed prominently AND a collapsible section containing the full step-by-step solution. Use the HTML <details> and <summary> tags exactly as shown above for the collapsible solutions.`;
+<details>
+<summary>Show Full Solution</summary>
+
+**Step 1:** [First step explanation]
+
+**Step 2:** [Second step explanation]
+
+[Continue with remaining steps...]
+
+</details>
+
+CRITICAL FORMATTING RULES:
+- Always leave a blank line after <summary>Show Full Solution</summary> before starting the solution content
+- Always leave a blank line before the closing </details> tag
+- Use **Step X:** format for each step in solutions
+- Ensure all LaTeX expressions have spaces around them (e.g., "equals $x^2$ which" not "equals$x^2$which")
+- Each step should be on its own paragraph with a blank line before and after`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
