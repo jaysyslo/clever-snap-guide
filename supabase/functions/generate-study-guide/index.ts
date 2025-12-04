@@ -177,8 +177,30 @@ CRITICAL FORMATTING RULES:
       console.log('Generated title:', generatedTitle);
     }
 
+    // Auto-save the study guide to the database
+    const { data: savedGuide, error: saveError } = await supabase
+      .from('study_guides')
+      .insert({
+        user_id: userId,
+        title: generatedTitle,
+        content: studyGuide,
+      })
+      .select('id')
+      .single();
+
+    if (saveError) {
+      console.error('Error saving study guide:', saveError);
+      // Still return the guide even if save fails
+    } else {
+      console.log('Study guide auto-saved with id:', savedGuide.id);
+    }
+
     return new Response(
-      JSON.stringify({ studyGuide, title: generatedTitle }),
+      JSON.stringify({ 
+        studyGuide, 
+        title: generatedTitle, 
+        savedGuideId: savedGuide?.id || null 
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
