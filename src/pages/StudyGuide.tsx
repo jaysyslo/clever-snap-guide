@@ -1,17 +1,50 @@
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Save, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import "katex/dist/katex.min.css";
 
 const StudyGuide = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { studyGuide } = location.state || {};
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { studyGuide, savedGuideId } = location.state || {};
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(!!savedGuideId);
+
+  const handleSave = async () => {
+    if (!user || !studyGuide) return;
+    
+    setSaving(true);
+    try {
+      const title = `Study Guide - ${new Date().toLocaleDateString()}`;
+      const { error } = await supabase
+        .from("study_guides")
+        .insert({
+          user_id: user.id,
+          title,
+          content: studyGuide,
+        });
+
+      if (error) throw error;
+      
+      setSaved(true);
+      toast({ title: "Study guide saved!" });
+    } catch (error: any) {
+      toast({ title: "Error saving", description: error.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (!studyGuide) {
     return (
@@ -32,10 +65,31 @@ const StudyGuide = () => {
   return (
     <div className="min-h-screen bg-gradient-surface p-6">
       <div className="max-w-2xl mx-auto space-y-6">
-        <Button variant="ghost" onClick={() => navigate("/history")}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to History
-        </Button>
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" onClick={() => navigate("/history")}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to History
+          </Button>
+          {!savedGuideId && (
+            <Button
+              variant="outline"
+              onClick={handleSave}
+              disabled={saving || saved}
+            >
+              {saved ? (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  Saved
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  {saving ? "Saving..." : "Save Guide"}
+                </>
+              )}
+            </Button>
+          )}
+        </div>
 
         <Card className="p-8 space-y-6">
           <h1 className="text-2xl font-bold">Your Personalized Study Guide</h1>
