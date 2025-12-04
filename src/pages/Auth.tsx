@@ -93,7 +93,7 @@ const Auth = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-primary mb-4 shadow-lg">
-            <span className="text-primary-foreground font-bold text-xl">F(x)</span>
+            <span className="text-primary-foreground font-math italic text-2xl">F(x)</span>
           </div>
           <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
             Foundx
