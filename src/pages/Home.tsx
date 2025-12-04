@@ -12,7 +12,7 @@ const Home = () => {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
   const [problemsSolved, setProblemsSolved] = useState(0);
-  const [studySessions, setStudySessions] = useState(0);
+  const [studyGuidesCount, setStudyGuidesCount] = useState(0);
   const [loadingStats, setLoadingStats] = useState(true);
 
   useEffect(() => {
@@ -20,25 +20,22 @@ const Home = () => {
       if (!user) return;
       
       try {
-        const { data, error } = await supabase
-          .from("question_history")
-          .select("solution_mode, solution_data")
-          .eq("user_id", user.id);
+        const [questionsRes, guidesRes] = await Promise.all([
+          supabase
+            .from("question_history")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", user.id),
+          supabase
+            .from("study_guides")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", user.id),
+        ]);
 
-        if (error) throw error;
+        if (questionsRes.error) throw questionsRes.error;
+        if (guidesRes.error) throw guidesRes.error;
 
-        setProblemsSolved(data?.length || 0);
-        
-        // Count completed step-by-step problems as study sessions
-        const completedSessions = data?.filter((q) => {
-          if (q.solution_mode !== "step_by_step" || !q.solution_data) return false;
-          const solutionData = q.solution_data as { totalSteps?: number; completedSteps?: number };
-          const totalSteps = solutionData.totalSteps || 0;
-          const completedSteps = solutionData.completedSteps || 0;
-          return totalSteps > 0 && completedSteps >= totalSteps;
-        }).length || 0;
-        
-        setStudySessions(completedSessions);
+        setProblemsSolved(questionsRes.count || 0);
+        setStudyGuidesCount(guidesRes.count || 0);
       } catch (error) {
         console.error("Failed to fetch stats:", error);
       } finally {
@@ -164,9 +161,9 @@ const Home = () => {
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-secondary">
-                {loadingStats ? "—" : studySessions}
+                {loadingStats ? "—" : studyGuidesCount}
               </div>
-              <div className="text-sm text-muted-foreground">Study Sessions</div>
+              <div className="text-sm text-muted-foreground">Study Guides</div>
             </div>
           </div>
         </div>
