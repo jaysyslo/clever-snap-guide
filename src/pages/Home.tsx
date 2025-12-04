@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Camera, Upload, History, Settings, Calculator } from "lucide-react";
+import { Camera, Upload, History, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -89,7 +89,7 @@ const Home = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-md">
-              <Calculator className="w-6 h-6 text-primary-foreground" />
+              <span className="text-primary-foreground font-bold text-sm">F(x)</span>
             </div>
             <div>
               <h1 className="text-2xl font-bold">Foundx</h1>
